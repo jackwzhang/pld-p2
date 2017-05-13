@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	
+	<!-- Data Tags -->
+	<title>DragDrop Test</title>
+	<meta charset="utf-8" />
+	
+	<style type="text/css">
+		
+		* {
+			margin: 0;
+			padding: 0;
+		}
+		
+		body {
+			background: #eee;
+		}
+		
+		#wrapper {
+			position: relative;
+			width: 80%;
+			margin: 20px auto;
+			border: 2px #000 solid;
+			background: #fff;
+			-moz-box-shadow: 3px 3px 3px #888;
+			-webkit-box-shadow: 3px 3px 3px #888;
+			box-shadow: 3px 3px 3px #888;
+		}
+		
+		#dragMe {
+			position: absolute;
+			top: 15px;
+			left: 15px;
+			width: 250px;
+			height: 250px;
+			border: 1px #333 solid;
+			background: #06a;
+			color: #fff;
+			font-size: 12px;
+			font-family: sans-serif;
+		}
+		
+		#withMe {
+			width: 242px;
+			background: #666;
+			border-bottom: 1px #333 solid;
+			cursor: move;
+			padding: 4px;
+		}
+		
+		#dragMe p {
+			padding: 4px;
+		}
+		
+		p.text {
+			color: #999;
+			font-size: 32px;
+			font-family: "URW Chancery L", cursive;
+			width: 650px;
+			margin: 0 auto;
+			padding: 200px 0;
+		}
+		
+	</style>
+	
+</head>
+<body>
+	
+	<div id="wrapper">
+		<div id="dragMe">
+			<div id="withMe">
+				Drag Me! :D
+			</div>
+			<p>
+				This is some text to test that there are no text selection issues.
+			</p>
+		</div>
+	
+		<p class="text">
+			Lorem ipsum dolor sit amet, consectetur adipiscing elit. Duis libero enim, lacinia sed hendrerit
+			sit amet, congue ut ipsum. Nullam mollis, risus eu porta scelerisque.
+		</p>
+	</div>
+	
+	<!-- JavaScript Includes -->
+	<script type="text/javascript" charset="utf-8" src="drag-drop.js"></script>
+	<script type="text/javascript" charset="utf-8" src="jquery.min.js"></script>
+	<script type="text/javascript">
+		
+		// var dragMe = document.getElementById('dragMe');
+		// var withMe = document.getElementById('withMe');
+		var dragMe = $('#dragMe');
+		var withMe = $('#withMe');
+		
+		var shouldntHappen = function() {
+			console.log('THIS SHOULDN\'T HAPPEN');
+		};
+		
+		
+		var dragRef = DragDrop.bind(dragMe, {
+			anchor: withMe,
+			boundingBox: 'offsetParent',
+			dragstart: function(evt) {
+				console.log('DragDrop.bind dragstart', evt);
+			},
+			drag: function(evt) {
+				console.log('DragDrop.bind drag', evt);
+			},
+			dragend: function(evt) {
+				console.log('DragDrop.bind dragend', evt);
+			}
+		});
+
+		
+		dragRef.bindEvent('dragstart', function(evt) {
+			console.log('DragDrop.bindEvent dragstart', evt);
+		});
+		dragRef.bindEvent('drag', function(evt) {
+			console.log('DragDrop.bindEvent drag', evt);
+		});
+		dragRef.bindEvent('dragend', function(evt) {
+			console.log('DragDrop.bindEvent dragend', evt);
+		});
+
+		
+		dragRef.bindEvent('dragstart', shouldntHappen);
+		dragRef.unbindEvent('dragstart', shouldntHappen);
+		
+		dragRef.bindEvent('drag', shouldntHappen);
+		dragRef.unbindEvent('drag', shouldntHappen);
+		
+		dragRef.bindEvent('dragend', shouldntHappen);
+		dragRef.unbindEvent('dragend', shouldntHappen);
+		
+		
+	</script>
+	
+</body>
+</html>
