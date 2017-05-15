@@ -74,7 +74,7 @@ function MovementCtrl(viewer)	// Cesium.viewer
 	// Proposed key down event function
 	var _funcKeyDown = function(e) {
 		var flagName = _funcGetFlagForKeyCode(e.keyCode);
-		if (typeof flagName !== 'undefined') {
+		if (typeof flagName !== 'undefined' && !$(':focus').is('input')) {
 			_flags[flagName] = true;
 		}
 	};
@@ -135,6 +135,25 @@ function MovementCtrl(viewer)	// Cesium.viewer
 		}
 		if (_flags.moveRight) {
 			camera.moveRight(moveRateHuman);
+		}
+		if (_flags.moveUp) {
+			camera.setView({
+				orientation: {
+					heading: camera.heading - moveRateHuman/20,
+					pitch: camera.pitch,
+					roll: 0
+				}
+			});
+			// lookLeft(moveRateHuman/20);
+		}
+		if (_flags.moveDown) {
+			camera.setView({
+				orientation: {
+					heading: camera.heading + moveRateHuman/20,
+					pitch: camera.pitch,
+					roll: 0
+				}
+			});
 		}
 	};
 	

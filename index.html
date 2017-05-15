@@ -309,7 +309,7 @@
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Skyline&nbsp;analysis" id="btnSkyline"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Viewshed&nbsp;analysis" id="btnViewshed"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Walk&nbsp;mode" id="btnWalkmode"><span class="glyphicon glyphicon-road toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
-			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Street&nbsp;view" id="btnStreetView"><i class="fa fa-street-view fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<div class="rightToolContainer" style="display:none;"><a href="#" data-toggle="tooltip" data-placement="left" title="Street&nbsp;view" id="btnStreetView"><i class="fa fa-street-view fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 		</div>
 		
 		<div id="toolsetEditing" style="position:absolute; right:10px; bottom:120px; z-index=3000; display:none">
@@ -565,8 +565,12 @@
 					terrainProvider : new Cesium.CesiumTerrainProvider({
 						url : host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/HK_DTM_1@dem',
 						isSct : true
-					})
+					}),
+					shadows: true
+					// sceneMode : Cesium.SceneMode.COLUMBUS_VIEW		// 2D scene, but not seem to solve coordinate system?
 				});
+				
+				viewer.scene.globe.enableLighting = true;
 			}
 			catch(e)
 			{
@@ -617,7 +621,7 @@
 					var polyuPromise = scene.addS3MTilesLayerByScp(host+'/iserver/services/3D-PlanD_Phase1/rest/realspace/datas/Config/config',{
 						name : 'PolyU'
 					});
-					var cyberPortPromise = scene.addS3MTilesLayerByScp(host+'/iserver/services/3D-OSGB_Trial/rest/realspace/datas/CyperPort_s3m/config',{
+					/*var cyberPortPromise = scene.addS3MTilesLayerByScp(host+'/iserver/services/3D-OSGB_Trial/rest/realspace/datas/CyperPort_s3m/config',{
 						name : 'cyber_port'
 					});
 					var taikooshingPromise = scene.addS3MTilesLayerByScp(host+'/iserver/services/3D-OSGB_Trial/rest/realspace/datas/TaiKooShing_s3m/config',{
@@ -625,9 +629,9 @@
 					});
 					var saikungPromise = scene.addS3MTilesLayerByScp(host+'/iserver/services/3D-OSGB_Trial/rest/realspace/datas/SaiKung_s3m/config',{
 						name : 'SaiKung'
-					});
+					});*/
 					
-					var promiseSet = [podiumPromise, buildPromise, aamModelPromise, polyuPromise, cyberPortPromise, taikooshingPromise, saikungPromise];
+					var promiseSet = [podiumPromise, buildPromise, aamModelPromise, polyuPromise/*, cyberPortPromise, taikooshingPromise, saikungPromise*/];
 					Cesium.when.all(promiseSet,function(layer){
 						var viewer = threeDGIS.viewer3D;
 						viewer.scene.layers.find('AAM_Model').selectedColor = new Cesium.Color(1,0,1);
@@ -879,6 +883,11 @@
 			// Not implementing this before reconstructing the code into classes
 			$('#btnWalkmode').click(function() {
 				threeDGIS.toggleViewMode3D();
+				if($('#btnStreetView').parent().css('display')=='block')
+					$('#btnStreetView').parent().css('display','none');
+				else
+					$('#btnStreetView').parent().css('display','block');
+					
 				// movementCtrl.toggle();
 			})
 			
@@ -1545,18 +1554,118 @@
 				// selection3D.removeAll();
 				features = result.features;
 				
-				tableHTML += '<table border="1" id=""><thead style="background-color:#dddddd;">'
-				for(var i=0; i<fields.length; i++)
-				{
-					//Sm
-					if (fields[i].substr(0,2) != 'Sm')
-					{
-						tableHTML += '<th>'+fields[i]+'</th>';
-					}
-				}
-				tableHTML += '</tr>';
+				var columns = [];
+				var tableObjs = [];
+				var $table = $('#attributeTable');
 				
-				console.log(features);
+				columns.push({
+					checkbox: true
+				});
+				
+				for(var i=0; i<features.length; i++)
+				{
+					var row = {};
+					var e, n, w, s;
+					for (var property in features[i].attributes) {
+						if(property.toUpperCase().substr(0,2) != 'SM' || property.toUpperCase()=='SMID')
+						{
+							if(i==0)
+							{
+								columns.push({
+									field: property,                   
+									title: property,
+									sortable: true,
+									filter: {
+										type: "input"
+									}
+								});
+							}
+							
+							row[property] = features[i].attributes[property];
+						}
+						else if(property.toUpperCase()=='SMSDRIE')
+							e = Number(features[i].attributes[property]);
+						else if(property.toUpperCase()=='SMSDRIN')
+							n = Number(features[i].attributes[property]);
+						else if(property.toUpperCase()=='SMSDRIW')
+							w = Number(features[i].attributes[property]);
+						else if(property.toUpperCase()=='SMSDRIS')
+							s = Number(features[i].attributes[property]);
+					}
+					var lngStr = (e+w)/2, latStr = (n+s)/2;
+					row['Coordinate'] = '('+lngStr.toFixed(7)+', '+latStr.toFixed(7)+')';
+					tableObjs.push(row);
+				}
+				columns.push({
+					field: 'Coordinate',                   
+					title: 'Coordinate',
+					sortable: true,
+					filter: {
+						type: "input"
+					}
+				});
+				$('#attributeTable').bootstrapTable('refreshOptions',{
+					columns:columns,
+					filter:true,
+					exportDataType: 'all'
+				});
+				
+				$('#attributeTable').bootstrapTable('removeAll');
+				$('#attributeTable').bootstrapTable('append', tableObjs);
+				$('#attributeTable').on('check.bs.table',function(e, row, element) {
+					var viewer = threeDGIS.threeDView.viewer;
+					var selectionList = viewer.scene.layers.find('bldg_wgs').getSelection();
+					selectionList.push(row.SMID);
+					viewer.scene.layers.find('bldg_wgs').setSelection(selectionList);
+				});
+				$('#attributeTable').on('uncheck.bs.table',function(e, row, element) {
+					var viewer = threeDGIS.threeDView.viewer;
+					var selectionList = viewer.scene.layers.find('bldg_wgs').getSelection();
+					viewer.scene.layers.find('bldg_wgs').releaseSelection();
+					var newSelection = [];
+					for(var i=0; i<selectionList.length; i++)
+					{
+						if(selectionList[i]==row.SMID)
+							continue;
+						else
+							newSelection.push(selectionList[i]);
+					}
+					console.log(selectionList);
+					console.log(newSelection);
+					
+					viewer.scene.layers.find('bldg_wgs').setSelection(newSelection);
+				});
+				$('#attributeTable').on('check-all.bs.table',function(e, rows) {
+					var viewer = threeDGIS.threeDView.viewer;
+					viewer.scene.layers.find('bldg_wgs').releaseSelection();
+					var selections = [];
+					for(var i=0; i<rows.length; i++)
+						selections.push(rows[i].SMID);
+					viewer.scene.layers.find('bldg_wgs').setSelection(selections);
+				});
+				$('#attributeTable').on('uncheck-all.bs.table',function(e, rows) {
+					var viewer = threeDGIS.threeDView.viewer;
+					viewer.scene.layers.find('bldg_wgs').releaseSelection();
+				});
+				$('#attributeTable').on('dbl-click-cell.bs.table',function(e, field, value, row) {
+					var coordinate = row.Coordinate;
+					
+					var coordTemp = coordinate.substring(1,coordinate.length-1);
+					var lnglat = coordTemp.split(', ');
+					var carto = new Cesium.Cartographic(Number(lnglat[0])*Math.PI/180,Number(lnglat[1])*Math.PI/180);
+					carto.height = threeDGIS.threeDView.viewer.scene.globe.getHeight(carto);
+					
+					threeDGIS.threeDView.viewer.scene.camera.flyTo({
+						destination: Cesium.Cartesian3.fromDegrees(Number(lnglat[0]),Number(lnglat[1]),carto.height+400),
+						orientation: {
+							heading: 0,
+							pitch: -Math.PI/2,
+							roll: 0
+						},
+						duration: 2
+					})
+				});
+				
 				var selectionIDs = [];
 				viewer.scene.layers.find('bldg_wgs').releaseSelection();
 				for(var i=0; i<features.length; i++)
@@ -1580,7 +1689,7 @@
 					tableHTML += '</tr>';
 				}
 				tableHTML += '</table><br />';		// Temporarily only show one result properly
-				viewer.scene.layers.find('bldg_wgs').setSelection(selectionIDs);
+				// viewer.scene.layers.find('bldg_wgs').setSelection(selectionIDs);
 			}
 		}
 	</script>
@@ -1692,7 +1801,8 @@
 					enableCloseButton: false,
 					zoomControl: false
 					// addressControl: false
-				});
+				}
+			);
 		}
 		
 		// May also want fov
@@ -1717,7 +1827,68 @@
 					enableCloseButton: false,
 					zoomControl: false
 					// addressControl: false
+				}
+			);
+			var fov = threeDGIS.threeDView.viewer.camera.frustum.fov;
+			var zoom = 1-Math.log(Math.tan(fov/2))/Math.log(2);
+			panorama.setZoom(zoom);
+			
+			google.maps.event.addListener(panorama, 'position_changed', function() {
+				var position = panorama.getPosition();
+				var pov = panorama.getPov();
+				
+				var lng = position.lng();
+				var lat = position.lat();
+				var heading = pov.heading*Math.PI/180;
+				var pitch = pov.pitch*Math.PI/180;
+				
+				var carto = new Cesium.Cartographic(lng*Math.PI/180, lat*Math.PI/180);
+				var viewHeight = threeDGIS.threeDView.viewer.scene.globe.getHeight(carto);
+				
+				threeDGIS.threeDView.viewer.camera.flyTo({
+					destination: Cesium.Cartesian3.fromDegrees(lng,lat,viewHeight),
+					orientation: {
+						heading: heading,
+						pitch: pitch,
+						roll: 0
+					},
+					duration: 1
 				});
+				threeDGIS.threeDView.viewer.camera.frustum.fov = Math.atan(Math.pow(2, 1-(pov.zoom)))*2;
+			});
+			/*panorama.addListener('position_changed', function() {
+				
+			});*/
+			
+			google.maps.event.addListener(panorama, 'pov_changed', function() {
+				var pov = panorama.getPov();
+				
+				var heading = pov.heading*Math.PI/180;
+				var pitch = pov.pitch*Math.PI/180;
+				
+				threeDGIS.threeDView.viewer.camera.setView({
+					orientation: {
+						heading: heading,
+						pitch: pitch,
+						roll: 0
+					}
+				});
+				threeDGIS.threeDView.viewer.camera.frustum.fov = Math.atan(Math.pow(2, 1-(pov.zoom)))*2;
+			});
+			/*panorama.addListener('pov_changed', function() {
+				var pov = panorama.getPov();
+				
+				var heading = pov.heading*Math.PI/180;
+				var pitch = pov.pitch*Math.PI/180;
+				
+				threeDGIS.threeDView.viewer.camera.setView({
+					orientation: {
+						heading: heading,
+						pitch: pitch,
+						roll: 0
+					}
+				});
+			});*/
 		}
 		
 		function streetViewMode () {

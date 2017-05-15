@@ -41,6 +41,8 @@ function TwoDView(map, mapDiv, toolDiv)
 			var feature = e.feature;
 			var thisObj = threeDGIS.twoDView;
 			
+			// Get feature area by 'feature.geometry.getGeodesicArea()'
+			// Get feature perimeter by 'feature.geometry.getGeodesicLength()'
 			thisObj.onMove(feature);
 		}});
 	}
