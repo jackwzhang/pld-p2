@@ -16,6 +16,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	var _selectBlockin2DFlag = false;	// Whether highlight the selected block in 2D
 	
 	var _modifiedList = [];		// Store the IDs representing the features modified
+	var _labelCollection;
 	
 	// Public field
 	this.viewer = viewer;
@@ -67,6 +68,46 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		}
 		
 		_handlerDis.clear();
+	}
+	
+	// Add label manually into 3D
+	ThreeDView.prototype.addLabel = function(txt, lng, lat, h) {
+		if(h==undefined)
+		{
+			var cartoPos = new Cesium.Cartographic(lng*Math.PI/180, lat*Math.PI/180);
+			h = this.viewer.scene.globe.getHeight(cartoPos) + 110;
+		}
+		
+		_labelCollection.add({
+			position : Cesium.Cartesian3.fromDegrees(lng,lat,h+5),
+			text : txt,
+			font : 'bold 28px sans-serif',
+			horizontalOrigin : Cesium.HorizontalOrigin.CENTER,
+			fillColor : Cesium.Color.FUCHSIA,
+			outlineColor : Cesium.Color.BLACK,
+			outlineWidth : 1.0,
+			style : Cesium.LabelStyle.FILL_AND_OUTLINE
+		});
+		
+		this.viewer.entities.add({
+			polyline : {
+				positions : Cesium.Cartesian3.fromDegreesArrayHeights([lng,lat,0,
+																	   lng,lat,h]),
+				width : 3,
+				followSurface : false,
+				material : new Cesium.PolylineOutlineMaterialProperty({
+					color: Cesium.Color.FUCHSIA
+				}),
+				outlineWidth : 1.0,
+				style : Cesium.LabelStyle.FILL_AND_OUTLINE
+			},
+			id : 'APP_Anno_Line'
+		});
+	}
+	
+	ThreeDView.prototype.removeAllLabels = function() {
+		_labelCollection.removeAll();
+		this.viewer.entities.removeById('APP_Anno_Line');
 	}
 	
 	// Add selection for blocks
@@ -218,27 +259,39 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 					var lat = vertexArray[j].y;
 					var lng = vertexArray[j].x;
 					
-					var cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, baseHeight);
+					var cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, 0);
 					verticesCartesian.push(cartesian);
 				}
 				
-				var baseHeight = 9999;
+				var cartos = [];
 				
 				for(var i=0; i<verticesCartesian.length; i++)
 				{
 					var cartoPos = Cesium.Cartographic.fromCartesian(verticesCartesian[i]);
-					var height = cartoPos.height;
+					cartos.push(cartoPos);
+					/*var height = cartoPos.height;
 					var terrainHeight = this.viewer.scene.globe.getHeight(cartoPos);
 					if(terrainHeight>height)
 						height = terrainHeight;
 					
 					if(height<baseHeight)
-						baseHeight = height;
+						baseHeight = height;*/
 				}
+				threeDGIS.temp = bldgHeight;
 				
-				polygon.hierarchy = new Cesium.PolygonHierarchy(verticesCartesian);
-				polygon.height = baseHeight;
-				polygon.extrudedHeight = height + bldgHeight;
+				Cesium.sampleTerrain(this.viewer.terrainProvider, 17, cartos)
+					.then(function(samples) {
+						var baseHeight = 9999;
+						for(var i=0; i<samples.length; i++)
+						{
+							if(samples[i].height<baseHeight)
+								baseHeight = samples[i].height;
+						}
+						
+						polygon.hierarchy = new Cesium.PolygonHierarchy(verticesCartesian);
+						polygon.height = baseHeight;
+						polygon.extrudedHeight = baseHeight + threeDGIS.temp;
+					});
 			}
 		}
 	}
@@ -295,7 +348,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		var distance = result.distance > 1000 ? (result.distance/1000).toFixed(2) + 'km' : result.distance + 'm';
 		var vHeight = result.verticalHeight > 1000 ? (result.verticalHeight/1000).toFixed(2) + 'km' : result.verticalHeight + 'm';
 		var hDistance = result.horizontalDistance > 1000 ? (result.horizontalDistance/1000).toFixed(2) + 'km' : result.horizontalDistance + 'm';
-		_handlerHeight.disLabel.text = '';//'空间距离:' + distance;
+		_handlerHeight.disLabel.text = 'Spacial:' + distance;
 		_handlerHeight.vLabel.text = 'Vertical:' + vHeight;
 		_handlerHeight.hLabel.text = 'Horizontal:' + hDistance;
 	});
@@ -307,4 +360,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 			$('body').removeClass('measureCur');
 		}
 	});
+	
+	// Init label collection
+	_labelCollection = this.viewer.scene.primitives.add(new Cesium.LabelCollection());
 }

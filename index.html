@@ -1,7 +1,7 @@
 ﻿<html>
 <head>
 	<meta charset="UTF-8">
-
+	<meta http-equiv="X-UA-Compatible" content="IE=edge;" />
 	<script src="./js/jquery.min.js"></script>
     <script src="./dist/js/bootstrap.js"></script>
     <script src="./dist/js/sidebar.js"></script>
@@ -200,7 +200,7 @@
 						<div id="collapseOne" class="panel-collapse collapse in">
 							<div id="3DLayers">
 								<ul class="list-group checked-list-box" id="layerList">
-									<li class="list-group-item" data-checked="true">OZP_Zone_Layer</li>
+									<li class="list-group-item" data-checked="true">ArcGIS_Server_REST_Layer</li>
 									<li class="list-group-item" data-checked="true">Terrain</li>
 									<li class="list-group-item" data-checked="true">AAM_Model</li>
 									<li class="list-group-item" data-checked="true">bldg_wgs</li>
@@ -242,7 +242,11 @@
 						</div>
 						<div id="collapseFive" class="panel-collapse collapse">
 							Search Application Case number or building name: <br />
-							<input type="text" id="queryValue" style="width: 200px;" value="Two International Finance Centre" /><br />
+							<select id="selSearchCriteria">
+								<option value="bldgName" selected>Building Name</option>
+								<option value="appNo">Application Number</option>
+							</select>
+							<input type="text" id="queryValue" style="width: 200px;" value="" /><br />
 							<button id="searchButton" onclick="searchAttribute();">Search</button>
 						</div>
 					</div>
@@ -442,7 +446,7 @@
 				</div>
 				<div class="modal-body" id="transpBody" style="overflow: auto; max-height:600px; max-width:800px;">
 					<select id="transpLayers">
-						<option value="OZP_Zone_Layer">OZP_Zone_Layer</option>
+						<option value="ArcGIS_Server_REST_Layer">ArcGIS_Server_REST_Layer</option>
 						<option value="AAM_Model">AAM_Model</option>
 						<option value="bldg_wgs">bldg_wgs</option>
 						<option value="podium_wgs">podium_wgs</option>
@@ -594,6 +598,8 @@
 				null		// Not implemented
 			);
 			
+			
+			
 			var imageryLayers = viewer.imageryLayers;
 			var imageryProvider = new Cesium.SuperMapImageryProvider({
 				url: host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/dop5k201555402_1@data'
@@ -604,6 +610,19 @@
 			
 			var scene = viewer.scene;
 			var widget = viewer.cesiumWidget;
+			
+			var rectangleInstance = new Cesium.GeometryInstance({
+			  geometry : new Cesium.RectangleGeometry({
+				rectangle : Cesium.Rectangle.fromDegrees(114.14, 22.28, 114.35, 22.4)
+			  }),
+			  id : 'rectangle',
+			  attributes : {
+				color : new Cesium.ColorGeometryInstanceAttribute(0.0, 1.0, 1.0, 0.5)
+			  }
+			});
+			scene.primitives.add(new Cesium.GroundPrimitive({
+			  geometryInstance : rectangleInstance
+			}));
 			
 			setTimeout(function() {
 				try{
@@ -621,7 +640,7 @@
 					var polyuPromise = scene.addS3MTilesLayerByScp(host+'/iserver/services/3D-PlanD_Phase1/rest/realspace/datas/Config/config',{
 						name : 'PolyU'
 					});
-					/*var cyberPortPromise = scene.addS3MTilesLayerByScp(host+'/iserver/services/3D-OSGB_Trial/rest/realspace/datas/CyperPort_s3m/config',{
+					var cyberPortPromise = scene.addS3MTilesLayerByScp(host+'/iserver/services/3D-OSGB_Trial/rest/realspace/datas/CyperPort_s3m/config',{
 						name : 'cyber_port'
 					});
 					var taikooshingPromise = scene.addS3MTilesLayerByScp(host+'/iserver/services/3D-OSGB_Trial/rest/realspace/datas/TaiKooShing_s3m/config',{
@@ -629,9 +648,9 @@
 					});
 					var saikungPromise = scene.addS3MTilesLayerByScp(host+'/iserver/services/3D-OSGB_Trial/rest/realspace/datas/SaiKung_s3m/config',{
 						name : 'SaiKung'
-					});*/
+					});
 					
-					var promiseSet = [podiumPromise, buildPromise, aamModelPromise, polyuPromise/*, cyberPortPromise, taikooshingPromise, saikungPromise*/];
+					var promiseSet = [podiumPromise, buildPromise, aamModelPromise, polyuPromise, cyberPortPromise, taikooshingPromise, saikungPromise];
 					Cesium.when.all(promiseSet,function(layer){
 						var viewer = threeDGIS.viewer3D;
 						viewer.scene.layers.find('AAM_Model').selectedColor = new Cesium.Color(1,0,1);
@@ -696,17 +715,23 @@
 						.addClass('state-icon ' + settings[$widget.data('state')].icon);
 
 					// Currently hard code to determine different layer types. Maybe dividing these will be necessary
-					if(layerName=='OZP_Zone_Layer')
+					if(layerName=='ArcGIS_Server_REST_Layer')
 					{
 						if(isChecked)
 						{
-							var imageryLayers = viewer.imageryLayers;
+							/*var imageryLayers = viewer.imageryLayers;
 							var imageryProvider = new Cesium.SuperMapImageryProvider({
 								//url: host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/dop5k201555402_1@data'
 								url: host+'/iserver/services/map-BaseMap_Color/rest/maps/Basemap_Small'
 							});
 							
-							var layer = imageryLayers.addImageryProvider(imageryProvider);
+							var layer = imageryLayers.addImageryProvider(imageryProvider);*/
+							
+							var provider = new Cesium.ArcGisMapServerImageryProvider({
+								url : 'https://pld-gisweb.pland.hksarg/arcgis/rest/services/Basemap/BMS_COLOR_WM/MapServer'
+							});
+
+							viewer.imageryLayers.addImageryProvider(provider);
 						}
 						else
 						{
@@ -956,7 +981,7 @@
 			
 			transpSlider.bootstrapSlider('on','slideStop',function(val) {
 				var selectedLayer = $('#transpLayers').val();
-				if(selectedLayer=='OZP_Zone_Layer')
+				if(selectedLayer=='ArcGIS_Server_REST_Layer')
 				{
 					threeDGIS.threeDView.viewer.imageryLayers.get(2).alpha = val/100;
 				}
@@ -979,7 +1004,7 @@
 			$('#transpLayers').change(function(e) {
 				var selectedLayer = $('#transpLayers').val();
 				var alpha = 0;
-				if(selectedLayer=='OZP_Zone_Layer')
+				if(selectedLayer=='ArcGIS_Server_REST_Layer')
 				{
 					alpha = threeDGIS.threeDView.viewer.imageryLayers.get(2).alpha;
 				}
@@ -1518,22 +1543,42 @@
 		var tableHTML = '';
 		
 		function searchAttribute() {
+			var viewer = threeDGIS.threeDView.viewer;
+			viewer.scene.layers.find('bldg_wgs').releaseSelection();
+			viewer.entities.removeById('APP_HIGHLIGHT');
+			threeDGIS.threeDView.removeAllLabels();
+			
 			fields = [];
 			var attributeValue = $('#queryValue').val();
+			
+			var searchCriteria = $('#selSearchCriteria option:selected').val();
+			var layerToSearch, db, selectColumn;
+			if(searchCriteria=='bldgName')
+			{
+				layerToSearch = 'bldg';
+				db = '10.40.106.82_P2_Sample_Data';
+				selectColumn = 'NAME_ENG';
+			}
+			else
+			{
+				layerToSearch = 'APPLICATION_WGS84';
+				db = '10.40.106.82_R3DGIS_GISDB';
+				selectColumn = 'APP_CASE_NO';
+			}
 			
 			var getFeatureParam, getFeatureBySQLService, getFeatureBySQLParams;
 			//alert("APP_CASE_NO LIKE '"+attributeValue+"%' OR LOCAT_ADDR LIKE '%"+attributeValue+"%'");
 
 			getFeatureParam = new SuperMap.REST.FilterParameter({
-				name: 'bldg@10.40.106.82_P2_Sample_Data',
+				name: layerToSearch+'@'+db,
 				//attributeFilter: "APP_CASE_NO='"+attributeValue+"'"
-				attributeFilter: "NAME_ENG LIKE '%"+attributeValue+"%'",
-				orderBy: "NAME_ENG"
+				attributeFilter: selectColumn+" LIKE '%"+attributeValue+"%'",
+				orderBy: selectColumn
 			});
 			
 			getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
 				queryParameter: getFeatureParam,
-				datasetNames:["10.40.106.82_P2_Sample_Data:bldg"],		// Hardcode
+				datasetNames:[db+":"+layerToSearch],		// Hardcode
 				toIndex: 999999
 			});
 			getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(dataUrl, {
@@ -1558,9 +1603,12 @@
 				var tableObjs = [];
 				var $table = $('#attributeTable');
 				
-				columns.push({
-					checkbox: true
-				});
+				if(features[0].attributes.APP_CASE_NO==undefined)	// Hard code to determine whether it is building or application
+				{
+					columns.push({
+						checkbox: true
+					});
+				}
 				
 				for(var i=0; i<features.length; i++)
 				{
@@ -1617,6 +1665,8 @@
 					var selectionList = viewer.scene.layers.find('bldg_wgs').getSelection();
 					selectionList.push(row.SMID);
 					viewer.scene.layers.find('bldg_wgs').setSelection(selectionList);
+					
+					
 				});
 				$('#attributeTable').on('uncheck.bs.table',function(e, row, element) {
 					var viewer = threeDGIS.threeDView.viewer;
@@ -1648,6 +1698,100 @@
 					viewer.scene.layers.find('bldg_wgs').releaseSelection();
 				});
 				$('#attributeTable').on('dbl-click-cell.bs.table',function(e, field, value, row) {
+					if(threeDGIS.threeDView.viewMode!='Bird-eye')
+						return;		// Don't fly under human view mode
+					
+					if(row.APP_CASE_NO!=undefined)
+					{
+						function flyToCase(getFeaturesEventArgs)
+						{						
+							var features = getFeaturesEventArgs.result.features;
+							var geometry = features[0].geometry;
+							var vertices = geometry.getVertices();
+							var viewer = threeDGIS.threeDView.viewer;
+							
+							if(viewer.entities.getById('APP_HIGHLIGHT')!=undefined)
+							{
+								viewer.entities.removeById('APP_HIGHLIGHT');
+								threeDGIS.threeDView.removeAllLabels();
+							}
+							
+							var cesiumVertices = [];
+							var cartos = []
+							for(var i=0; i<vertices.length; i++)
+							{
+								var lng = vertices[i].x;
+								var lat = vertices[i].y;
+								var carto = new Cesium.Cartographic(lng*Math.PI/180, lat*Math.PI/180);
+								cartos.push(carto);
+								var h = viewer.scene.globe.getHeight(carto);
+								cesiumVertices.push(Cesium.Cartesian3.fromDegrees(lng, lat, h));
+							}
+							Cesium.sampleTerrain(viewer.terrainProvider, 17, cartos)
+								.then(function(samples) {
+									var baseHeight = 999;
+									var maxHeight = -99;
+									
+									for(var i=0; i<samples.length; i++)
+									{									
+										if(samples[i].height<baseHeight)
+											baseHeight = samples[i].height;
+										if(samples[i].height>maxHeight)
+											maxHeight = samples[i].height;
+									}
+									
+									var polygon = new Cesium.PolygonGraphics({
+										hierarchy: new Cesium.PolygonHierarchy(cesiumVertices),
+										extrudedHeight: maxHeight+10,
+										height: baseHeight,
+										material: new Cesium.Color(1.0, 0.2, 0.6, 0.7),
+										outline: true,
+										outlineColor : Cesium.Color.BLACK,
+										outlineWidth : 10	// Does not seem to make any difference
+									});
+									
+									viewer.entities.add({
+										id: 'APP_HIGHLIGHT',
+										polygon: polygon,
+										outline: true,
+										shadows: Cesium.ShadowMode.ENABLED		// Does not seem to be working
+									});
+								});
+							
+							var coordinate = row.Coordinate;
+							var coordTemp = coordinate.substring(1,coordinate.length-1);
+							var lnglat = coordTemp.split(', ');
+							threeDGIS.threeDView.addLabel(row.APP_CASE_NO,Number(lnglat[0]),Number(lnglat[1]));
+						}
+						
+						var layerToSearch = 'APPLICATION_WGS84';
+						var db = '10.40.106.82_R3DGIS_GISDB';
+						var selectColumn = 'APP_CASE_NO';
+						
+						getFeatureParam = new SuperMap.REST.FilterParameter({
+							name: layerToSearch+'@'+db,
+							//attributeFilter: "APP_CASE_NO='"+attributeValue+"'"
+							attributeFilter: selectColumn + " = '" + row.APP_CASE_NO + "'",
+							orderBy: selectColumn
+						});
+						
+						getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
+							queryParameter: getFeatureParam,
+							datasetNames:[db+":"+layerToSearch]
+						});
+						getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(dataUrl, {
+							eventListeners: {"processCompleted": flyToCase, "processFailed": processFailed}
+						});
+
+						getFeatureBySQLService.processAsync(getFeatureBySQLParams);
+					}
+					else
+					{
+						var rowID = row.SMID;
+						$("#attributeTable").bootstrapTable("uncheckAll");
+						$("#attributeTable").bootstrapTable("checkBy", {field:"SMID", values:[rowID]});
+					}
+					
 					var coordinate = row.Coordinate;
 					
 					var coordTemp = coordinate.substring(1,coordinate.length-1);
@@ -1665,6 +1809,9 @@
 						duration: 2
 					})
 				});
+				
+				$('#attributeTable').bootstrapTable( 'resetView' , {height: 400} );
+				$('#iconAttributeTable').click();
 				
 				var selectionIDs = [];
 				viewer.scene.layers.find('bldg_wgs').releaseSelection();
