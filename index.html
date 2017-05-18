@@ -86,6 +86,7 @@
 			width: 36px;
 			text-align: center;
 			margin-bottom: 2px;
+			border-radius: 5px;
 		}
 		
 		.toolsetPanel {
@@ -168,9 +169,10 @@
 			</div>
 			
 			<div>
-				<i class="fa fa-list fa-2x leftIcon" aria-hidden="true" id="iconAttributeTable"></i>
+				<i class="fa fa-table fa-2x leftIcon" aria-hidden="true" id="iconAttributeTable"></i>
 			</div>
 			
+			<!--
 			<div>
 				<i class="fa fa-arrow-up fa-2x leftIcon" aria-hidden="true" id="iconDummyUp" onclick="threeDGIS.threeDView.viewer.imageryLayers.raise(dopLayer);"></i>
 			</div>
@@ -178,6 +180,7 @@
 			<div>
 				<i class="fa fa-arrow-down fa-2x leftIcon" aria-hidden="true" id="iconDummyDown" onclick="threeDGIS.threeDView.viewer.imageryLayers.lower(dopLayer);"></i>
 			</div>
+			-->
 		</div>
 	  
 	  <!-- Begin page content -->
@@ -200,7 +203,7 @@
 						<div id="collapseOne" class="panel-collapse collapse in">
 							<div id="3DLayers">
 								<ul class="list-group checked-list-box" id="layerList">
-									<li class="list-group-item" data-checked="true">ArcGIS_Server_REST_Layer</li>
+									<li class="list-group-item" data-checked="true">Base_Map</li>
 									<li class="list-group-item" data-checked="true">Terrain</li>
 									<li class="list-group-item" data-checked="true">AAM_Model</li>
 									<li class="list-group-item" data-checked="true">bldg_wgs</li>
@@ -261,14 +264,23 @@
 							<br />
 							Height:&nbsp;
 							<input id="exBlockHeight" data-slider-id='ex1Slider' type="text" data-slider-min="1" data-slider-max="400" data-slider-step="1" data-slider-value="1"/>
-							<br />
+							<br /><br />
 							Edit mode:&nbsp;<select id="selectEditMode">
 								<option value="1" selected>Reshape</option>
 								<option value="8">Move</option>
 								<option value="4">Rotate</option>
 								<option value="2">Resize</option>
 							</select>
+							<br /><br />
+							Building Height: <span id="txtHt"></span>
 							<br />
+							No. of Floor (3m): <span id="txtNoFloor"></span>
+							<br />
+							Footprint Area sq.m: <span id="txtArea"></span>
+														
+							<br />
+							GFA (Area x No. of Floor): <span id="txtGFA"></span>
+							<br /><br />
 							<button id="btnEditConfirm" disabled>Start Edit</button>
 						</div>
 					</div>
@@ -446,7 +458,7 @@
 				</div>
 				<div class="modal-body" id="transpBody" style="overflow: auto; max-height:600px; max-width:800px;">
 					<select id="transpLayers">
-						<option value="ArcGIS_Server_REST_Layer">ArcGIS_Server_REST_Layer</option>
+						<option value="Base_Map">Base_Map</option>
 						<option value="AAM_Model">AAM_Model</option>
 						<option value="bldg_wgs">bldg_wgs</option>
 						<option value="podium_wgs">podium_wgs</option>
@@ -715,23 +727,23 @@
 						.addClass('state-icon ' + settings[$widget.data('state')].icon);
 
 					// Currently hard code to determine different layer types. Maybe dividing these will be necessary
-					if(layerName=='ArcGIS_Server_REST_Layer')
+					if(layerName=='Base_Map')
 					{
 						if(isChecked)
 						{
-							/*var imageryLayers = viewer.imageryLayers;
+							var imageryLayers = viewer.imageryLayers;
 							var imageryProvider = new Cesium.SuperMapImageryProvider({
 								//url: host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/dop5k201555402_1@data'
 								url: host+'/iserver/services/map-BaseMap_Color/rest/maps/Basemap_Small'
 							});
 							
-							var layer = imageryLayers.addImageryProvider(imageryProvider);*/
+							var layer = imageryLayers.addImageryProvider(imageryProvider);
 							
-							var provider = new Cesium.ArcGisMapServerImageryProvider({
+							/* var provider = new Cesium.ArcGisMapServerImageryProvider({
 								url : 'https://pld-gisweb.pland.hksarg/arcgis/rest/services/Basemap/BMS_COLOR_WM/MapServer'
 							});
 
-							viewer.imageryLayers.addImageryProvider(provider);
+							viewer.imageryLayers.addImageryProvider(provider); */
 						}
 						else
 						{
@@ -950,14 +962,16 @@
 					return;
 				}
 				
-				var longitude = Number($('#txtLng').val());
-				var latitude = Number($('#txtLat').val());
+				var hkx = Number($('#txtLng').val());
+				var hky = Number($('#txtLat').val());
 				var height = Number($('#txtHeight').val());
 				var head = Number($('#txtHead').val())*Math.PI/180;
 				var tilt = -Number($('#txtTilt').val())*Math.PI/180;
 				
+				var wgspt = CoordTransform.hk2wgs(hkx, hky);
+				
 				threeDGIS.threeDView.viewer.scene.camera.flyTo({
-					destination: Cesium.Cartesian3.fromDegrees(longitude,latitude,height),
+					destination: Cesium.Cartesian3.fromDegrees(wgspt[0],wgspt[1],height),
 					orientation: {
 						heading: head,
 						pitch: tilt,
@@ -981,7 +995,7 @@
 			
 			transpSlider.bootstrapSlider('on','slideStop',function(val) {
 				var selectedLayer = $('#transpLayers').val();
-				if(selectedLayer=='ArcGIS_Server_REST_Layer')
+				if(selectedLayer=='Base_Map')
 				{
 					threeDGIS.threeDView.viewer.imageryLayers.get(2).alpha = val/100;
 				}
@@ -995,6 +1009,16 @@
 			
 			blockSlider.bootstrapSlider('on','change',function(val) {
 				threeDGIS.threeDView.updateHeight(val.newValue);
+				
+				var areaStr = $('#txtArea').html();
+				$('#txtHt').html(val.newValue + ' m');
+				var floorNo = Math.floor(val.newValue/3);
+				$('#txtNoFloor').html(Number(floorNo));
+				
+				areaStr = areaStr.substring(0,areaStr.length-4);
+				var area = Number(areaStr);
+				
+				$('#txtGFA').html(Number(area*floorNo).toFixed(3));
 			});
 			
 			blockSlider.bootstrapSlider('on','slideStop',function() {
@@ -1004,7 +1028,7 @@
 			$('#transpLayers').change(function(e) {
 				var selectedLayer = $('#transpLayers').val();
 				var alpha = 0;
-				if(selectedLayer=='ArcGIS_Server_REST_Layer')
+				if(selectedLayer=='Base_Map')
 				{
 					alpha = threeDGIS.threeDView.viewer.imageryLayers.get(2).alpha;
 				}
@@ -1098,10 +1122,10 @@
 				getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
 					queryParameter: getFeatureParam,
 					// datasetNames:["SQLServerSource:"+layerNameSplit[0]],	// Currently hardcode the datasource first
-					datasetNames:["10.40.106.82_P2_Sample_Data:Proposed_Building"],
+					datasetNames:["SQLServerSource:Proposed_Building"],
 					toIndex:999999
 				});
-				getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(host + '/iserver/services/data-Phase2_Data/rest/data', {
+				getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(host + '/iserver/services/data-PlanD_Phase1/rest/data', {
 					eventListeners: {"processCompleted": getBlockCompleted, "processFailed": processFailed}
 				});
 
@@ -1116,7 +1140,7 @@
 
 					for(var i=0; i<features.length; i++)
 					{
-						//tableHTML += '<tr>';
+						
 						var feature = features[i];
 						var vertices = feature.geometry.getVertices();
 						
@@ -1129,10 +1153,12 @@
 						
 						for(var j=0; j<vertices.length; j++)
 						{
-							var lat = vertices[j].y;
-							var lng = vertices[j].x;
+							var y = vertices[j].y;
+							var x = vertices[j].x;
 							
-							var cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, baseHeight);
+							var wgspt = CoordTransform.hk2wgs(x,y);
+							
+							var cartesian = Cesium.Cartesian3.fromDegrees(wgspt[0], wgspt[1], baseHeight);
 							verticesCartesian.push(cartesian);
 						}
 						
@@ -1230,11 +1256,14 @@
 				
 				var camera = threeDGIS.threeDView.viewer.scene.camera;
 				var cameraCarto = Cesium.Cartographic.fromCartesian(camera.position);
-				$('#txtLng').val(cameraCarto.longitude*180/Math.PI.toFixed(3));
-				$('#txtLat').val(cameraCarto.latitude*180/Math.PI.toFixed(3));
-				$('#txtHeight').val(cameraCarto.height.toFixed(3));
-				$('#txtHead').val(camera.heading*180/Math.PI.toFixed(3));
-				$('#txtTilt').val(-camera.pitch*180/Math.PI.toFixed(3));
+				
+				var hkpt = CoordTransform.wgs2hk(cameraCarto.longitude*180/Math.PI, cameraCarto.latitude*180/Math.PI);
+				
+				$('#txtLng').val(hkpt[0].toFixed(3));
+				$('#txtLat').val(hkpt[1].toFixed(3));
+				$('#txtHeight').val((cameraCarto.height).toFixed(3));
+				$('#txtHead').val((camera.heading*180/Math.PI).toFixed(3));
+				$('#txtTilt').val((-camera.pitch*180/Math.PI).toFixed(3));
 			});
 			
 			$("#btnFlyToTrigger").on('shown.bs.modal',function(){
@@ -2210,7 +2239,7 @@
 			$('#toolset3D').css('display','none');
 			$('#toolsetEditing').css('display','block');
 			
-			threeDGIS.threeDView.selectBlockFlag = false;
+			// threeDGIS.threeDView.selectBlockFlag = false;
 			threeDGIS.threeDView.removeAnalysisEntities();
 			threeDGIS.threeDView.clearSelection();
 			
@@ -2224,9 +2253,15 @@
 			threeDGIS.toggle23D();
 			threeDGIS.threeDView.selectBlockFlag = true;
 			$('#btnEditConfirm').prop('disabled', true);
+			threeDGIS.threeDView.enableClickSelect();
 		});
 		
 		$('#btnAddBlock').click(function() {
+			$('#txtArea').html('');
+			$('#txtGFA').html('');
+			$('#txtHt').html('');
+			$('#txtNoFloor').html('');
+			
 			threeDGIS.twoDView.deactivateAll();
 			threeDGIS.twoDView.ctrlDrawPoint.deactivate();
 			
@@ -2241,9 +2276,15 @@
 			drawPolygon.activate();
 			
 			$('#txtSystemInfo').val('Draw the block to be added on 2D map');
+			threeDGIS.threeDView.enableClickSelect();
 		});
 		
 		$('#btnDeleteBlock').click(function() {
+			$('#txtArea').html('');
+			$('#txtGFA').html('');
+			$('#txtHt').html('');
+			$('#txtNoFloor').html('');
+			
 			threeDGIS.twoDView.deactivateAll();
 			
 			var drawPoint = threeDGIS.twoDView.ctrlDrawPoint;
@@ -2255,6 +2296,7 @@
 			threeDGIS.threeDView.addBlockSelection();
 			
 			$('#txtSystemInfo').val('Select a block to delete');
+			ThreeDView.prototype.clickToDelete();
 		});
 		
 		/*$('#btnSelectBlock').click(function() {
@@ -2314,6 +2356,9 @@
 	<script src="js/class/viewerComponents/threeDView.js"></script>
 	<script src="js/class/viewerComponents/3DGIS.js"></script>
 	<script src="js/class/3DBlock.js"></script>
+	
+	<script src="lib/proj4js/proj4.js"></script>
+	<script src="js/class/CoordTransform.js"></script>
 	
 	<script src="../iClient/for3D/webgl/examples/js/Convert.js"></script>
 	<script src="../iClient/for3D/webgl/examples/js/echarts.min.js"></script>

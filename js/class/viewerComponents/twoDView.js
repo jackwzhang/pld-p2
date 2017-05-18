@@ -32,17 +32,30 @@ function TwoDView(map, mapDiv, toolDiv)
 		this.ctrlMoveFeature = new SuperMap.Control.DragFeature(this.vectorLayer);
 		this.ctrlModifyVertex = new SuperMap.Control.ModifyFeature(this.vectorLayer);
 		
+		var scaleline = new SuperMap.Control.ScaleLine();
 		this.map.addControl(this.ctrlDrawPolygon);
 		this.map.addControl(this.ctrlDrawPoint);
 		this.map.addControl(this.ctrlMoveFeature);
 		this.map.addControl(this.ctrlModifyVertex);
+		this.map.addControl(scaleline);
+		this.map.addControl(new SuperMap.Control.MousePosition({
+			numDigits: 3
+		}));
 		
 		this.ctrlModifyVertex.events.on({'featuremodified':function(e){
 			var feature = e.feature;
 			var thisObj = threeDGIS.twoDView;
+			var area = feature.geometry.getArea();
+			var height = $('#exBlockHeight').bootstrapSlider('getValue');
+			var floorNo = Math.floor(height/3);
 			
 			// Get feature area by 'feature.geometry.getGeodesicArea()'
 			// Get feature perimeter by 'feature.geometry.getGeodesicLength()'
+			$('#txtHt').html(height + ' m');
+			$('#txtNoFloor').html(floorNo);
+			$('#txtArea').html(Number(area).toFixed(3)+' sqm');
+			$('#txtGFA').html(Number(area*floorNo).toFixed(3));
+			
 			thisObj.onMove(feature);
 		}});
 	}
@@ -65,7 +78,8 @@ function TwoDView(map, mapDiv, toolDiv)
 			// If these are the first layers added, change center
 			if(thisObj.map.layers.length==layers.length)
 			{
-				thisObj.map.setCenter(new SuperMap.LonLat(114.168, 22.2817), 2);
+				thisObj.map.setCenter(new SuperMap.LonLat(834611.23, 815470.0), 1);
+				thisObj.map.zoomToScale(5000);
 				thisObj.ctrlDrawPoint.events.on({"featureadded": threeDGIS.twoDView.selectedFeature});
 				thisObj.ctrlDrawPoint.activate();
 			}
@@ -164,10 +178,12 @@ function TwoDView(map, mapDiv, toolDiv)
 					
 					for(var j=0; j<smVertices.length; j++)
 					{
-						var lat = smVertices[j].y;
-						var lng = smVertices[j].x;
+						var y = smVertices[j].y;
+						var x = smVertices[j].x;
 						
-						var cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, baseHeight);
+						var wgspt = CoordTransform.hk2wgs(x,y);
+						
+						var cartesian = Cesium.Cartesian3.fromDegrees(wgspt[0], wgspt[1], baseHeight);
 						cartesianVertices.push(cartesian);
 					}
 					
@@ -245,6 +261,11 @@ function TwoDView(map, mapDiv, toolDiv)
 						var state = data.state;
 						if(state=='Success')
 						{
+							$('#txtArea').html('');
+							$('#txtGFA').html('');
+							$('#txtHt').html('');
+							$('#txtNoFloor').html('');
+							
 							$('#txtSystemInfo').val("Delete feature success");
 							
 							thisObj.ctrlDrawPoint.events.un({"featureadded": threeDGIS.twoDView.selectedFeatureToDelete});
@@ -267,6 +288,8 @@ function TwoDView(map, mapDiv, toolDiv)
 								var viewer = threeDGIS.threeDView.viewer;		// Hard code specifying 3D viewer to be updated
 								viewer.entities.removeById('BLOCK_'+id);
 							}
+							
+							threeDGIS.threeDView.enableClickSelect();
 						}
 						else
 							$('#txtSystemInfo').val("Delete feature failed");
@@ -284,23 +307,40 @@ function TwoDView(map, mapDiv, toolDiv)
 		var getFeaturesByGeometryParams,
 			getFeaturesByGeometryService,
 			geometry = drawGeometryArgs.feature.geometry;
-		
-		var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
-			datasetNames: ["10.40.106.82_P2_Sample_Data:Proposed_Building"],
-			bufferDistance: 0.000005,
-			geometry: geometry
-		});
-		var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+"/iserver/services/data-Phase2_Data/rest/data", {
-			eventListeners: {
-				"processCompleted": selectedFeatureProcessCompleted,
-				"processFailed": processFailed
-			}
-		});
-		getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+			
+		if(geometry!=undefined)
+		{
+			var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
+				datasetNames: ["SQLServerSource:Proposed_Building"],
+				bufferDistance: 0.000005,
+				geometry: geometry
+			});
+			var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+"/iserver/services/data-PlanD_Phase1/rest/data", {
+				eventListeners: {
+					"processCompleted": selectedFeatureProcessCompleted,
+					"processFailed": processFailed
+				}
+			});
+			getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+		}
+		else
+		{
+			var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByIDsParameters({
+				datasetNames: ["SQLServerSource:Proposed_Building"],
+				IDs: [drawGeometryArgs.feature.ID]
+			});
+			
+			var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByIDsService(host+"/iserver/services/data-PlanD_Phase1/rest/data", {
+				eventListeners: {
+					"processCompleted": selectedFeatureProcessCompleted,
+					"processFailed": processFailed
+				}
+			});
+			getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+		}
 	}
 	
 	// Select and highlight a block
-	// Modify the following
 	TwoDView.prototype.selectedFeature = function (drawGeometryArgs) {
 		var thisObj = threeDGIS.twoDView;	// May change 'threeDGIS.twoDView' to 'this' or something, but 'this' is not the object itself here...
 		var map = thisObj.map;
@@ -327,6 +367,11 @@ function TwoDView(map, mapDiv, toolDiv)
 				// alert("No polygon found.");
 				threeDGIS.threeDView.addBlockSelection();
 				thisObj.feature = undefined;
+				
+				$('#txtArea').html('');
+				$('#txtGFA').html('');
+				$('#txtHt').html('');
+				$('#txtNoFloor').html('');
 				return;
 			}
 			ids = new Array();
@@ -345,6 +390,15 @@ function TwoDView(map, mapDiv, toolDiv)
 					
 					// Select the feature in 3D
 					threeDGIS.threeDView.addBlockSelection(feature.data.SMID);
+					var area = feature.attributes.SMAREA;
+					var height = feature.attributes.ELEVATION;
+					var floorNo = Math.floor(Number(height)/3);
+					
+					$('#txtHt').html(height + ' m');
+					$('#txtNoFloor').html(floorNo);
+					
+					$('#txtArea').html(Number(area).toFixed(3)+' sqm');
+					$('#txtGFA').html(Number(area*floorNo).toFixed(3));
 				}
 			}
 		}
@@ -354,18 +408,37 @@ function TwoDView(map, mapDiv, toolDiv)
 			getFeaturesByGeometryService,
 			geometry = drawGeometryArgs.feature.geometry;
 		
-		var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
-			datasetNames: ["10.40.106.82_P2_Sample_Data:Proposed_Building"],
-			bufferDistance: 0.000005,
-			geometry: geometry
-		});
-		var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+"/iserver/services/data-Phase2_Data/rest/data", {
-			eventListeners: {
-				"processCompleted": selectedFeatureProcessCompleted,
-				"processFailed": processFailed
-			}
-		});
-		getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+		if(geometry!=undefined)
+		{
+			var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
+				datasetNames: ["SQLServerSource:Proposed_Building"],
+				bufferDistance: 0.000005,
+				geometry: geometry
+			});
+			
+			var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+"/iserver/services/data-PlanD_Phase1/rest/data", {
+				eventListeners: {
+					"processCompleted": selectedFeatureProcessCompleted,
+					"processFailed": processFailed
+				}
+			});
+			getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+		}
+		else
+		{
+			var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByIDsParameters({
+				datasetNames: ["SQLServerSource:Proposed_Building"],
+				IDs: [drawGeometryArgs.feature.ID]
+			});
+			
+			var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByIDsService(host+"/iserver/services/data-PlanD_Phase1/rest/data", {
+				eventListeners: {
+					"processCompleted": selectedFeatureProcessCompleted,
+					"processFailed": processFailed
+				}
+			});
+			getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+		}
 	}
 	
 	TwoDView.prototype.updateFeature = function (event) {
@@ -456,6 +529,10 @@ function TwoDView(map, mapDiv, toolDiv)
 					{
 						if(thisObj.map.layers[i] instanceof SuperMap.Layer.TiledDynamicRESTLayer)
 							thisObj.map.layers[i].redraw();
+						$('#txtArea').html('');
+						$('#txtGFA').html('');
+						$('#txtHt').html('');
+						$('#txtNoFloor').html('');
 					}
 				}
 				else

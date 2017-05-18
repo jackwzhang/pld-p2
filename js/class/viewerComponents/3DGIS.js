@@ -25,7 +25,7 @@ function ThreeDGIS(threeDView, twoDView, streetview, panoview)
 		var buildingURL = host+"/iserver/services/map-PlanD_Phase1/rest/maps/Building";
 		var podiumURL = host+"/iserver/services/map-PlanD_Phase1/rest/maps/Podium";
 		var DOPURL = host+"/iserver/services/map-PlanD_Phase1/rest/maps/DOP";
-		var mapURL = host+"/iserver/services/map-Phase2_Data/rest/maps/AAM_Polygon";
+		var mapURL = host+"/iserver/services/map-PlanD_Phase1/rest/maps/EditingSQL";
 		
 		var map = new SuperMap.Map("SMapContainer", {controls: [
 			new SuperMap.Control.Navigation({
@@ -53,7 +53,7 @@ function ThreeDGIS(threeDView, twoDView, streetview, panoview)
 		
 		function addLayerDOP(){
 			map.addLayers([DOPLayer]);
-			map.setCenter(new SuperMap.LonLat(114.168, 22.2817), 2);
+			map.setCenter(new SuperMap.LonLat(834611.23, 815470.0), 1);
 			
 			// _twoDView.initDraw();
 		}

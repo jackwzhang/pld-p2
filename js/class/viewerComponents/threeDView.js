@@ -75,7 +75,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		if(h==undefined)
 		{
 			var cartoPos = new Cesium.Cartographic(lng*Math.PI/180, lat*Math.PI/180);
-			h = this.viewer.scene.globe.getHeight(cartoPos) + 110;
+			h = this.viewer.scene.globe.getHeight(cartoPos) + 150;
 		}
 		
 		_labelCollection.add({
@@ -256,10 +256,12 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 				
 				for(var j=0; j<vertexArray.length; j++)
 				{
-					var lat = vertexArray[j].y;
-					var lng = vertexArray[j].x;
+					var y = vertexArray[j].y;
+					var x = vertexArray[j].x;
 					
-					var cartesian = Cesium.Cartesian3.fromDegrees(lng, lat, 0);
+					var wgspt = CoordTransform.hk2wgs(x,y);
+					
+					var cartesian = Cesium.Cartesian3.fromDegrees(wgspt[0], wgspt[1], 0);
 					verticesCartesian.push(cartesian);
 				}
 				
@@ -296,6 +298,78 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		}
 	}
 	
+	// Enable select by clicking
+	ThreeDView.prototype.enableClickSelect = function() {
+		_handler.setInputAction(function(e){
+			var thisObj = threeDGIS.threeDView;
+			
+			var pickedObject = viewer.scene.pick(e.position);
+			var id;
+			
+			if (Cesium.defined(pickedObject)) {
+				// Highlight selected block
+				var entity = pickedObject.id;
+				id = entity.id;
+				
+				if(threeDGIS.twoDView.mapDiv.css('display')=='block')
+				{
+					id = id.substring(6,id.length);
+					
+					var feature = {
+						ID: Number(id)
+					};
+					
+					var args = {
+						feature: feature
+					};
+					
+					threeDGIS.twoDView.selectedFeature(args);
+				}
+			}
+			else
+			{
+				id=undefined;
+				if(threeDGIS.twoDView.mapDiv.css('display')=='block')
+					threeDGIS.twoDView.vectorLayer.removeAllFeatures();
+			}
+			
+			if(thisObj.selectBlockFlag)
+				thisObj.addBlockSelection(id);
+		},Cesium.ScreenSpaceEventType.LEFT_CLICK);
+	}
+	
+	// Click to delete a 3D block during editing mode
+	ThreeDView.prototype.clickToDelete = function() {
+		_handler.setInputAction(function(e){
+			var thisObj = threeDGIS.threeDView;
+		
+			var pickedObject = viewer.scene.pick(e.position);
+			var id;
+			
+			if (Cesium.defined(pickedObject)) {
+				// Highlight selected block
+				var entity = pickedObject.id;
+				id = entity.id;
+				
+				if(threeDGIS.twoDView.mapDiv.css('display')=='block')
+				{
+					id = id.substring(6,id.length);
+					
+					var feature = {
+						ID: Number(id)
+					};
+					var args = {
+						feature: feature
+					};
+					
+					threeDGIS.twoDView.selectedFeatureToDelete(args);
+				}
+			}
+			else
+				return;
+		},Cesium.ScreenSpaceEventType.LEFT_CLICK);
+	}
+	
 	/*
 	 * Initialization after construction
 	 */
@@ -309,23 +383,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	_handler = new Cesium.ScreenSpaceEventHandler(this.viewer.scene.canvas);
 	
 	// Redefine left click event, may not pop up default sidebar when clicking on entities
-	_handler.setInputAction(function(e){
-		var thisObj = threeDGIS.threeDView;
-		
-		var pickedObject = viewer.scene.pick(e.position);
-		var id;
-		
-		if (Cesium.defined(pickedObject)) {
-			// Highlight selected block
-			var entity = pickedObject.id;
-			id = entity.id;
-		}
-		else
-			id=undefined;
-		
-		if(thisObj.selectBlockFlag)
-			thisObj.addBlockSelection(id);
-	},Cesium.ScreenSpaceEventType.LEFT_CLICK);
+	this.enableClickSelect();
 	
 	// Instantiate distance measurement handler
 	_handlerDis = new Cesium.MeasureHandler(this.viewer,Cesium.MeasureMode.Distance);
