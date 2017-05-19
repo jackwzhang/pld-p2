@@ -75,15 +75,20 @@ function TwoDView(map, mapDiv, toolDiv)
 			
 			thisObj.map.addLayers(layers);
 			
+			
 			// If these are the first layers added, change center
 			if(thisObj.map.layers.length==layers.length)
 			{
-				thisObj.map.setCenter(new SuperMap.LonLat(834611.23, 815470.0), 1);
+				thisObj.map.setCenter(new SuperMap.LonLat(834769.23, 816111.0), 1);
 				thisObj.map.zoomToScale(5000);
 				thisObj.ctrlDrawPoint.events.on({"featureadded": threeDGIS.twoDView.selectedFeature});
 				thisObj.ctrlDrawPoint.activate();
 			}
 			thisObj.map.allOverlays = true;
+			thisObj.map.raiseLayer(thisObj.map.getLayersByName('Vector Layer')[0],1);
+			
+			if(baseLayer.name=="BaseMap")
+				threeDGIS.twoDView.addLayer("blocks",host+"/iserver/services/map-Phase2_Data/rest/maps/Proposed_Building");
 		}
 	}
 	
@@ -372,6 +377,7 @@ function TwoDView(map, mapDiv, toolDiv)
 				$('#txtGFA').html('');
 				$('#txtHt').html('');
 				$('#txtNoFloor').html('');
+				$('#btnEditConfirm').prop('disabled', true);
 				return;
 			}
 			ids = new Array();
@@ -400,6 +406,7 @@ function TwoDView(map, mapDiv, toolDiv)
 					$('#txtArea').html(Number(area).toFixed(3)+' sqm');
 					$('#txtGFA').html(Number(area*floorNo).toFixed(3));
 				}
+				$('#btnEditConfirm').prop('disabled', false);
 			}
 		}
 		

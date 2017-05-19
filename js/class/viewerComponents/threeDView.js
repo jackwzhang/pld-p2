@@ -18,12 +18,18 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	var _modifiedList = [];		// Store the IDs representing the features modified
 	var _labelCollection;
 	
+	// Viewshed position
+	this.viewPosition;
+	
 	// Public field
 	this.viewer = viewer;
 	this.mapDiv = mapDiv;
 	this.toolDiv = toolDiv;
 	this.viewMode = 'Bird-eye';
 	this.selectedBlocks = {};	// Selected entities in the scene
+	
+	this.pointHandler;
+	this.viewshed3D;
 	
 	// Flags
 	this.selectBlockFlag = true;		// Whether enable select 3D Blocks. Not implemented yet.
@@ -59,6 +65,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	// Remove analysis result visualizations, remain blocks
 	ThreeDView.prototype.removeAnalysisEntities = function() {
 		var entities = this.viewer.entities.values;
+		threeDGIS.threeDView.removeAllLabels();
 		
 		for(var i=entities.length-1; i>-1; i--)
 		{
@@ -68,6 +75,9 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		}
 		
 		_handlerDis.clear();
+		_handlerHeight.clear();
+		this.viewshed.destroy();
+		this.viewshed = new Cesium.ViewShed3D(threeDGIS.threeDView.viewer.scene);
 	}
 	
 	// Add label manually into 3D
@@ -373,6 +383,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	/*
 	 * Initialization after construction
 	 */
+	this.viewer.scene.viewFlag = true;
 	// Initialize movement control
 	this.viewer.selectionIndicator.viewModel.selectionIndicatorElement.style.visibility = 'hidden'; 
     $('.cesium-infoBox').css('visibility','hidden'); 
@@ -381,6 +392,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	
 	// Define mouse click / key handler
 	_handler = new Cesium.ScreenSpaceEventHandler(this.viewer.scene.canvas);
+	_viewshedHandler = new Cesium.ScreenSpaceEventHandler(this.viewer.scene.canvas);
 	
 	// Redefine left click event, may not pop up default sidebar when clicking on entities
 	this.enableClickSelect();
@@ -418,6 +430,34 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 			$('body').removeClass('measureCur');
 		}
 	});
+	
+	_viewshedHandler.setInputAction(function(e){
+		var thisObj = threeDGIS.threeDView;
+		if (!thisObj.viewer.scene.viewFlag) {
+			var position = e.endPosition;
+			var last = thisObj.viewer.scene.pickPosition(position);
+
+			var distance = Cesium.Cartesian3.distance(thisObj.viewPosition, last);
+
+			if(distance > 0 ){
+				var cartographic = Cesium.Cartographic.fromCartesian(last);
+				var longitude = Cesium.Math.toDegrees(cartographic.longitude);
+				var latitude = Cesium.Math.toDegrees(cartographic.latitude);
+				var height = cartographic.height;
+
+				thisObj.viewshed.setDistDirByPoint([longitude, latitude, height]);
+				
+				if(thisObj.viewshed.distance<400)
+					thisObj.viewshed.distance = 400;
+			}
+		}
+	},Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+	_viewshedHandler.setInputAction(function(e){
+		var thisObj = threeDGIS.threeDView;
+		thisObj.viewer.scene.viewFlag = true;
+		// pointHandler.deactivate();
+	},Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
 	
 	// Init label collection
 	_labelCollection = this.viewer.scene.primitives.add(new Cesium.LabelCollection());

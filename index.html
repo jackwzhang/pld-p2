@@ -204,6 +204,7 @@
 							<div id="3DLayers">
 								<ul class="list-group checked-list-box" id="layerList">
 									<li class="list-group-item" data-checked="true">Base_Map</li>
+									<li class="list-group-item" data-checked="true">OZP_Zone</li>
 									<li class="list-group-item" data-checked="true">Terrain</li>
 									<li class="list-group-item" data-checked="true">AAM_Model</li>
 									<li class="list-group-item" data-checked="true">bldg_wgs</li>
@@ -279,7 +280,7 @@
 							Footprint Area sq.m: <span id="txtArea"></span>
 														
 							<br />
-							GFA (Area x No. of Floor): <span id="txtGFA"></span>
+							GFA (Area × No. of Floor): <span id="txtGFA"></span>
 							<br /><br />
 							<button id="btnEditConfirm" disabled>Start Edit</button>
 						</div>
@@ -324,6 +325,7 @@
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Profile&nbsp;analysis" id="btnProfile"><i class="fa fa-area-chart fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Skyline&nbsp;analysis" id="btnSkyline"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Viewshed&nbsp;analysis" id="btnViewshed"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Clear&nbsp;analysis" id="btnClearAll" onclick="threeDGIS.threeDView.removeAnalysisEntities();"><i class="fa fa-trash fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Walk&nbsp;mode" id="btnWalkmode"><span class="glyphicon glyphicon-road toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
 			<div class="rightToolContainer" style="display:none;"><a href="#" data-toggle="tooltip" data-placement="left" title="Street&nbsp;view" id="btnStreetView"><i class="fa fa-street-view fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 		</div>
@@ -391,11 +393,11 @@
 				<div class="modal-body" id="flyToBody" style="overflow: auto; max-height:600px; max-width:800px;">
 					<table>
 						<tr>
-							<td style="width:300px;">Longitude:</td>
+							<td style="width:300px;">Easting:</td>
 							<td><input id="txtLng"></input></td>
 						</tr>
 						<tr>
-							<td>Latitude:</td>
+							<td>Northing:</td>
 							<td><input id="txtLat"></input></td>
 						</tr>
 						<tr>
@@ -459,6 +461,7 @@
 				<div class="modal-body" id="transpBody" style="overflow: auto; max-height:600px; max-width:800px;">
 					<select id="transpLayers">
 						<option value="Base_Map">Base_Map</option>
+						<option value="OZP_Zone">OZP_Zone</option>
 						<option value="AAM_Model">AAM_Model</option>
 						<option value="bldg_wgs">bldg_wgs</option>
 						<option value="podium_wgs">podium_wgs</option>
@@ -590,7 +593,8 @@
 			}
 			catch(e)
 			{
-				location.reload();
+				// Remove the catch statement
+				;//location.reload();
 			}
 			
 			var camera = viewer.scene.camera;
@@ -667,6 +671,11 @@
 						var viewer = threeDGIS.viewer3D;
 						viewer.scene.layers.find('AAM_Model').selectedColor = new Cesium.Color(1,0,1);
 						viewer.scene.layers.find('bldg_wgs').selectedColor = new Cesium.Color(1,0,1);
+						viewer.scene.layers.find('AAM_Model').lodRangeScale = 0.4;
+						viewer.scene.layers.find('PolyU').lodRangeScale = 0.4;
+						viewer.scene.layers.find('cyber_port').lodRangeScale = 0.4;
+						viewer.scene.layers.find('TaiKooShing').lodRangeScale = 0.4;
+						viewer.scene.layers.find('SaiKung').lodRangeScale = 0.4;
 					},function(e){
 						if (widget._showRenderLoopErrors) {
 							var title = '??SCP??,???????????url???????';
@@ -731,23 +740,70 @@
 					{
 						if(isChecked)
 						{
-							var imageryLayers = viewer.imageryLayers;
+							/*var imageryLayers = viewer.imageryLayers;
 							var imageryProvider = new Cesium.SuperMapImageryProvider({
 								//url: host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/dop5k201555402_1@data'
 								url: host+'/iserver/services/map-BaseMap_Color/rest/maps/Basemap_Small'
 							});
 							
-							var layer = imageryLayers.addImageryProvider(imageryProvider);
+							var layer = imageryLayers.addImageryProvider(imageryProvider);*/
 							
-							/* var provider = new Cesium.ArcGisMapServerImageryProvider({
+							var provider = new Cesium.ArcGisMapServerImageryProvider({
 								url : 'https://pld-gisweb.pland.hksarg/arcgis/rest/services/Basemap/BMS_COLOR_WM/MapServer'
 							});
 
-							viewer.imageryLayers.addImageryProvider(provider); */
+							var layer = viewer.imageryLayers.addImageryProvider(provider);
+							layer.name = "Base_Map";
+							
+							for(var i=0; i<viewer.imageryLayers.length; i++)
+							{
+								if(viewer.imageryLayers.get(i).name=='OZP_Zone')
+								{
+									viewer.imageryLayers.raiseToTop(viewer.imageryLayers.get(i));
+									break;
+								}
+							}
 						}
 						else
 						{
-							viewer.imageryLayers.remove(viewer.imageryLayers.get(2));
+							for(var i=0; i<viewer.imageryLayers.length; i++)
+							{
+								if(viewer.imageryLayers.get(i).name=='Base_Map')
+									viewer.imageryLayers.remove(viewer.imageryLayers.get(i));
+							}
+						}
+					}
+					else if(layerName=='OZP_Zone')
+					{
+						if(isChecked)
+						{
+							/*var imageryLayers = viewer.imageryLayers;
+							var imageryProvider = new Cesium.SuperMapImageryProvider({
+								//url: host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/dop5k201555402_1@data'
+								url: host+'/iserver/services/map-BaseMap_Color/rest/maps/Basemap_Small'
+							});
+							
+							var layer = imageryLayers.addImageryProvider(imageryProvider);*/
+							
+							var imageryLayers = viewer.imageryLayers;
+							var imageryProvider = new Cesium.SuperMapImageryProvider({
+								url: host+'/iserver/services/map-OZP_ZONE/rest/maps/OZP_ZONE_WGS84'
+							});
+							
+							var ozpLayer = imageryLayers.addImageryProvider(imageryProvider);
+							imageryLayers.raiseToTop(ozpLayer);
+							ozpLayer.name = "OZP_Zone";
+						}
+						else
+						{
+							for(var i=0; i<viewer.imageryLayers.length; i++)
+							{
+								if(viewer.imageryLayers.get(i).name=='OZP_Zone')
+								{
+									viewer.imageryLayers.remove(viewer.imageryLayers.get(i));
+									break;
+								}
+							}
 						}
 					}
 					else if(layerName=='Terrain')
@@ -826,11 +882,13 @@
 			// Viewshed analysis
 			var viewPosition;
 
-			scene.viewFlag = true;
+			// scene.viewFlag = true;
 			var pointHandler = new Cesium.PointHandler(viewer);
+			threeDGIS.threeDView.pointHandler = pointHandler;
 
 			var viewshed3D = new Cesium.ViewShed3D(scene);
-			var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
+			threeDGIS.threeDView.viewshed = viewshed3D;
+			/*var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
 
 			handler.setInputAction(function(e){
 				if (!scene.viewFlag) {
@@ -852,14 +910,15 @@
 
 			handler.setInputAction(function(e){
 				scene.viewFlag = true;
-				pointHandler.deactivate();
-			},Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+				// pointHandler.deactivate();
+			},Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);*/
 
 			$("#btnViewshed").click(function() {
+				threeDGIS.threeDView.removeAnalysisEntities();
 				var viewer = threeDGIS.viewer3D;
 				
-				if(pointHandler.active) {
-					pointHandler.deactivate();
+				if(threeDGIS.threeDView.pointHandler.active) {
+					// threeDGIS.threeDView.pointHandler.deactivate();
 					return;
 				}
 
@@ -870,11 +929,14 @@
 					var id = entityValues[i].id;
 					if(id.substring(0,5)!='BLOCK')
 						viewer.entities.remove(entityValues[i]);
+					
+					threeDGIS.threeDView.removeAllLabels();
 				}
-				viewshed3D.distance = 0.1;
+
+				threeDGIS.threeDView.viewshed.distance = 400;
 				scene.viewFlag = true;
 
-				pointHandler.activate();
+				threeDGIS.threeDView.pointHandler.activate();
 			});
 			
 			$('#btnSetScale2D').click(function (){
@@ -902,7 +964,7 @@
 
 			pointHandler.drawCompletedEvent.addEventListener(function(point){
 				var position = point.position._value;
-				viewPosition = position;
+				threeDGIS.threeDView.viewPosition = position;
 
 				var cartographic = Cesium.Cartographic.fromCartesian(position);
 				var longitude = Cesium.Math.toDegrees(cartographic.longitude);
@@ -910,8 +972,8 @@
 				var height = cartographic.height;
 
 				if(scene.viewFlag) {
-					viewshed3D.viewPosition = [longitude, latitude, height+2.5];
-					viewshed3D.build();
+					threeDGIS.threeDView.viewshed.viewPosition = [longitude, latitude, height+2.5];
+					threeDGIS.threeDView.viewshed.build();
 					scene.viewFlag = false;
 				}
 			});
@@ -995,9 +1057,16 @@
 			
 			transpSlider.bootstrapSlider('on','slideStop',function(val) {
 				var selectedLayer = $('#transpLayers').val();
-				if(selectedLayer=='Base_Map')
+				if(selectedLayer=='Base_Map' || selectedLayer=='OZP_Zone')
 				{
-					threeDGIS.threeDView.viewer.imageryLayers.get(2).alpha = val/100;
+					for(var i=0; i<threeDGIS.threeDView.viewer.imageryLayers.length; i++)
+					{
+						if(threeDGIS.threeDView.viewer.imageryLayers.get(i).name=='OZP_Zone')
+						{
+							threeDGIS.threeDView.viewer.imageryLayers.get(i).alpha = val/100;
+							break;
+						}
+					}
 				}
 				else
 				{
@@ -1351,9 +1420,15 @@
 		
 		$('#btnStreetView').click(function() {
 			if($('#streetViewContainer').css('display')=='none')
+			{
 				streetViewMode();
+				$('#btnWalkmode').parent().css('display','none');
+			}
 			else
+			{
 				cesiumMode();
+				$('#btnWalkmode').parent().css('display','block');
+			}
 		});
 		
 		$('.btnToggleMapMode').click(function() {
@@ -1361,6 +1436,7 @@
 		});
 		
 		$('#icon3DMeasure').click(function() {
+			threeDGIS.threeDView.removeAnalysisEntities();
 			threeDGIS.threeDView.initDistanceMeasure();
 		});
 		
@@ -1624,7 +1700,30 @@
 			var i, len, features, feature, result = getFeaturesEventArgs.result;
 			tableHTML = 'Application cases: <br />';
 			
-			if (result && result.features) {
+			if(!(result && result.features)) {
+				$('#attributeTable').bootstrapTable('refreshOptions',{
+					columns:[],
+					filter:true,
+					exportDataType: 'all'
+				});
+				
+				$('#attributeTable').bootstrapTable('removeAll');
+				$('#iconAttributeTable').click();
+			}
+			else {
+				if(result.features.length==0)
+				{
+					$('#attributeTable').bootstrapTable('refreshOptions',{
+						columns:[]
+					});
+					
+					$('#attributeTable').bootstrapTable('removeAll');
+					$('#attributeTable').bootstrapTable( 'resetView' , {height: 149} );
+					$('#iconAttributeTable').click();
+					
+					return;
+				}
+			
 				// selection3D.removeAll();
 				features = result.features;
 				
@@ -1688,6 +1787,7 @@
 				});
 				
 				$('#attributeTable').bootstrapTable('removeAll');
+				$('#attributeTable').bootstrapTable( 'resetView' , {height: 400} );
 				$('#attributeTable').bootstrapTable('append', tableObjs);
 				$('#attributeTable').on('check.bs.table',function(e, row, element) {
 					var viewer = threeDGIS.threeDView.viewer;
@@ -1838,8 +1938,6 @@
 						duration: 2
 					})
 				});
-				
-				$('#attributeTable').bootstrapTable( 'resetView' , {height: 400} );
 				$('#iconAttributeTable').click();
 				
 				var selectionIDs = [];
@@ -1866,7 +1964,7 @@
 				}
 				tableHTML += '</table><br />';		// Temporarily only show one result properly
 				// viewer.scene.layers.find('bldg_wgs').setSelection(selectionIDs);
-			}
+			}	
 		}
 	</script>
 	
@@ -2243,7 +2341,7 @@
 			threeDGIS.threeDView.removeAnalysisEntities();
 			threeDGIS.threeDView.clearSelection();
 			
-			$('#btnEditConfirm').prop('disabled', false);
+			// $('#btnEditConfirm').prop('disabled', false);
 		});
 		
 		$('#btnBackTo3D').click(function() {
@@ -2257,6 +2355,7 @@
 		});
 		
 		$('#btnAddBlock').click(function() {
+			$('#btnEditConfirm').prop('disabled', true);
 			$('#txtArea').html('');
 			$('#txtGFA').html('');
 			$('#txtHt').html('');
@@ -2280,6 +2379,7 @@
 		});
 		
 		$('#btnDeleteBlock').click(function() {
+			$('#btnEditConfirm').prop('disabled', true);
 			$('#txtArea').html('');
 			$('#txtGFA').html('');
 			$('#txtHt').html('');
@@ -2346,6 +2446,7 @@
 				threeDGIS.twoDView.ctrlDrawPoint.activate();
 				
 				threeDGIS.twoDView.updateFeature();
+				$('#btnEditConfirm').prop('disabled', true);
 			}
 		});
 	</script>

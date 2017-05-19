@@ -25,7 +25,8 @@ function ThreeDGIS(threeDView, twoDView, streetview, panoview)
 		var buildingURL = host+"/iserver/services/map-PlanD_Phase1/rest/maps/Building";
 		var podiumURL = host+"/iserver/services/map-PlanD_Phase1/rest/maps/Podium";
 		var DOPURL = host+"/iserver/services/map-PlanD_Phase1/rest/maps/DOP";
-		var mapURL = host+"/iserver/services/map-PlanD_Phase1/rest/maps/EditingSQL";
+		var mapURL = host+"/iserver/services/map-Phase2_Data/rest/maps/Proposed_Building";
+		var baseURL = host+"/iserver/services/map-arcgis-BMSGRAPHICCOLOR/rest/maps/BMS_GRAPHIC_COLOR";
 		
 		var map = new SuperMap.Map("SMapContainer", {controls: [
 			new SuperMap.Control.Navigation({
@@ -49,7 +50,8 @@ function ThreeDGIS(threeDView, twoDView, streetview, panoview)
 		//DOPLayer = new SuperMap.Layer.TiledDynamicRESTLayer("editor", mapURL, {transparent: true, cacheEnabled: false}, {maxResolution:"auto",bufferImgCount:0});
 		//DOPLayer.events.on({"layerInitialized": addLayerDOP});
 		
-		_twoDView.addLayer("editor",mapURL);
+		_twoDView.addLayer("BaseMap",baseURL);
+		// _twoDView.addLayer("blocks",mapURL);
 		
 		function addLayerDOP(){
 			map.addLayers([DOPLayer]);
