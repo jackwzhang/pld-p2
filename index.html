@@ -328,6 +328,7 @@
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Clear&nbsp;analysis" id="btnClearAll" onclick="threeDGIS.threeDView.removeAnalysisEntities();"><i class="fa fa-trash fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Walk&nbsp;mode" id="btnWalkmode"><span class="glyphicon glyphicon-road toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
 			<div class="rightToolContainer" style="display:none;"><a href="#" data-toggle="tooltip" data-placement="left" title="Street&nbsp;view" id="btnStreetView"><i class="fa fa-street-view fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Screen&nbsp;capture" id="btnCapture"><i class="fa fa-picture-o fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 		</div>
 		
 		<div id="toolsetEditing" style="position:absolute; right:10px; bottom:120px; z-index=3000; display:none">
@@ -585,7 +586,10 @@
 						url : host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/HK_DTM_1@dem',
 						isSct : true
 					}),
-					shadows: true
+					shadows: true,
+					contextOptions: {
+						webgl:{preserveDrawingBuffer:true}
+					}
 					// sceneMode : Cesium.SceneMode.COLUMBUS_VIEW		// 2D scene, but not seem to solve coordinate system?
 				});
 				
@@ -671,6 +675,8 @@
 						var viewer = threeDGIS.viewer3D;
 						viewer.scene.layers.find('AAM_Model').selectedColor = new Cesium.Color(1,0,1);
 						viewer.scene.layers.find('bldg_wgs').selectedColor = new Cesium.Color(1,0,1);
+						
+						// Read to determine which layers are OSGB
 						viewer.scene.layers.find('AAM_Model').lodRangeScale = 0.4;
 						viewer.scene.layers.find('PolyU').lodRangeScale = 0.4;
 						viewer.scene.layers.find('cyber_port').lodRangeScale = 0.4;
@@ -1443,6 +1449,14 @@
 		$('#selectEditMode').change(function() {
 			var modeNo = $('#selectEditMode').val();
 			threeDGIS.twoDView.ctrlModifyVertex.mode = modeNo;
+		});
+		
+		$('#btnCapture').click(function() {
+			var scene = threeDGIS.threeDView.viewer.scene;
+			var canvas = scene.canvas;
+			canvas.toBlob(function(blob) {
+				saveAs(blob, "screenshot.png");
+			}, "image/png");
 		});
 	</script>
 	
@@ -2459,6 +2473,8 @@
 	<script src="js/class/3DBlock.js"></script>
 	
 	<script src="lib/proj4js/proj4.js"></script>
+	<script src="lib/html2canvas/dist/html2canvas.min.js"></script>
+	<script src="lib/FileSaver/FileSaver.min.js"></script>
 	<script src="js/class/CoordTransform.js"></script>
 	
 	<script src="../iClient/for3D/webgl/examples/js/Convert.js"></script>
