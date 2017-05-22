@@ -461,4 +461,31 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	
 	// Init label collection
 	_labelCollection = this.viewer.scene.primitives.add(new Cesium.LabelCollection());
+	
+	// Pick S3M objects event
+	this.viewer.pickEvent.addEventListener(function(feature){
+		var columns = [];
+		var tableObj = {};
+		for (var property in feature) {
+			if(property.toUpperCase().substr(0,2) != 'SM' || property.toUpperCase()=='SMID')
+			{
+				columns.push({
+					field: property,                   
+					title: property,
+					sortable: true,
+					filter: {
+						type: "input"
+					}
+				});
+			}
+		}
+		
+		$('#attributeTable').bootstrapTable('refreshOptions',{
+			columns:columns
+		});
+		$('#attributeTable').bootstrapTable('removeAll');
+		$('#attributeTable').bootstrapTable( 'resetView' , {height: 400} );
+		$('#attributeTable').bootstrapTable('append', [feature]);
+		$('#dialogModal').modal('show');
+	});
 }

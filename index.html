@@ -682,6 +682,31 @@
 						viewer.scene.layers.find('cyber_port').lodRangeScale = 0.4;
 						viewer.scene.layers.find('TaiKooShing').lodRangeScale = 0.4;
 						viewer.scene.layers.find('SaiKung').lodRangeScale = 0.4;
+						
+						var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
+						var layerPodiumVec = viewer.scene.layers.find('podium_wgs');
+						var layerAAM = viewer.scene.layers.find('AAM_Model');
+						
+						layerBldgVec.setQueryParameter({
+							url: host+'/iserver/services/data-Phase2_Data/rest/data',
+							dataSourceName: '10.40.106.82_P2_Sample_Data',
+							dataSetName: 'Bldg_HK80',
+							keyWord: 'SmID'
+						});
+						
+						layerPodiumVec.setQueryParameter({
+							url: host+'/iserver/services/data-Phase2_Data/rest/data',
+							dataSourceName: '10.40.106.82_P2_Sample_Data',
+							dataSetName: 'Podium_HK80',
+							keyWord: 'SmID'
+						});
+						
+						layerAAM.setQueryParameter({
+							url: host+'/iserver/services/data-Phase2_Data/rest/data',
+							dataSourceName: '10.40.106.82_P2_Sample_Data',
+							dataSetName: 'AAM_Model',
+							keyWord: 'SmID'
+						});
 					},function(e){
 						if (widget._showRenderLoopErrors) {
 							var title = '??SCP??,???????????url???????';
@@ -794,6 +819,7 @@
 							var imageryLayers = viewer.imageryLayers;
 							var imageryProvider = new Cesium.SuperMapImageryProvider({
 								url: host+'/iserver/services/map-OZP_ZONE/rest/maps/OZP_ZONE_WGS84'
+								// url: host+'/iserver/services/map-Phase2_Data/rest/maps/SPOT_RGB'		// Map including image on DB not served right?
 							});
 							
 							var ozpLayer = imageryLayers.addImageryProvider(imageryProvider);
@@ -1452,11 +1478,59 @@
 		});
 		
 		$('#btnCapture').click(function() {
-			var scene = threeDGIS.threeDView.viewer.scene;
-			var canvas = scene.canvas;
-			canvas.toBlob(function(blob) {
-				saveAs(blob, "screenshot.png");
-			}, "image/png");
+			/*
+			 * Currently for 3D only, may have condition whether to capture 3D or 2D.
+			 * I don't think split screen should be captured both.
+			 */
+			
+			if(threeDGIS.mode[0]=="3D" && threeDGIS.mode.length==1)
+			{
+				// $('#cesiumContainer').width($('#cesiumContainer').width()*5);
+				// $('#cesiumContainer').height($('#cesiumContainer').height()*5);
+				
+				var scene = threeDGIS.threeDView.viewer.scene;
+				scene.layers.find('AAM_Model').lodRangeScale = 0.1;
+				scene.layers.find('PolyU').lodRangeScale = 0.1;
+				scene.layers.find('cyber_port').lodRangeScale = 0.1;
+				scene.layers.find('TaiKooShing').lodRangeScale = 0.1;
+				scene.layers.find('SaiKung').lodRangeScale = 0.1;
+				
+				$('#txtSystemInfo').val('Preparing more detailed model for screen capture.');
+				console.log(scene.canvas);
+				
+				setTimeout(function() {
+					var canvas = scene.canvas;
+					// console.log(canvas);
+					canvas.toBlob(function(blob) {
+						saveAs(blob, "screenshot.png");
+						$('#txtSystemInfo').val('Screen captured successfully.');
+						
+						//$('#cesiumContainer').width($('#cesiumContainer').width()/5);
+						//$('#cesiumContainer').height($('#cesiumContainer').height()/5);
+						
+						setTimeout(function() {
+							scene.layers.find('AAM_Model').lodRangeScale = 0.4;
+							scene.layers.find('PolyU').lodRangeScale = 0.4;
+							scene.layers.find('cyber_port').lodRangeScale = 0.4;
+							scene.layers.find('TaiKooShing').lodRangeScale = 0.4;
+							scene.layers.find('SaiKung').lodRangeScale = 0.4;
+						},300);
+					}, "image/png");
+				}, 5000);	// 5 sec does not seem to be enough, but not yet found any event or promise indicating that refresh is done
+			}
+			else if(threeDGIS.mode[0]=="2D" && threeDGIS.mode.length==1)
+			{
+				/*html2canvas(document.getElementById('SMapContainer'), {
+					onrendered: function(canvas) {
+						canvas.toBlob(function(blob) {
+							saveAs(blob, "screenshot.png");
+						}, "image/png");
+						canvas.style.display = 'none';
+					}
+				});*/
+				
+				MapToImg&&MapToImg.excute(threeDGIS.twoDView.map);
+			}
 		});
 	</script>
 	
@@ -2413,15 +2487,6 @@
 			ThreeDView.prototype.clickToDelete();
 		});
 		
-		/*$('#btnSelectBlock').click(function() {
-			var drawPoint = threeDGIS.twoDView.ctrlDrawPoint;
-			drawPoint.events.un({"featureadded": threeDGIS.twoDView.selectedFeature});
-			drawPoint.events.un({"featureadded": threeDGIS.twoDView.selectedFeatureToDelete});
-			drawPoint.events.on({"featureadded": threeDGIS.twoDView.selectedFeature});
-			
-			// drawPoint.activate();
-		});*/
-		
 		$('#btnEditConfirm').click(function() {
 			if($('#btnEditConfirm').html()=='Start Edit')
 			{
@@ -2471,6 +2536,7 @@
 	<script src="js/class/viewerComponents/threeDView.js"></script>
 	<script src="js/class/viewerComponents/3DGIS.js"></script>
 	<script src="js/class/3DBlock.js"></script>
+	<script src="js/MapToImg.js"></script>
 	
 	<script src="lib/proj4js/proj4.js"></script>
 	<script src="lib/html2canvas/dist/html2canvas.min.js"></script>
