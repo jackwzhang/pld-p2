@@ -179,6 +179,59 @@ function ThreeDGIS(threeDView, twoDView, streetview, panoview)
 	}
 	
 	/*
+	 * Static functions
+	 */
+	ThreeDGIS.rewriteAttributeTable = function(features) {
+		var firstFeature = features[0];
+
+		var $table = $('#attributeTable');
+		var columns = [];
+		for(var paraName in firstFeature.data)
+		{
+			if(paraName.toUpperCase().substr(0,2) != 'SM')
+			{
+				fields.push(paraName);
+				// tableHTML += '<th data-field="'+paraName+'">'+paraName+'</th>';
+				columns.push({
+					field: paraName,                   
+					title: paraName,
+					sortable: true,
+					filter: {
+						type: "input"
+					}
+				});
+			}
+		}
+		$table.bootstrapTable('refreshOptions',{
+			columns:columns,
+			filter:true,
+			exportDataType: 'all'
+		});  
+		// tableHTML += '</tr></thead>';
+		// $("#attributeTable").html(tableHTML);
+		
+		var tableRows = [];
+		for(var i=0; i<features.length; i++)
+		{
+			//tableHTML += '<tr>';
+			var feature = features[i];
+			var tableObj = {};
+			for(var j=0; j<fields.length; j++)
+			{
+				if(fields[j].toUpperCase().substr(0,2) != 'SM')
+				{
+					tableObj[fields[j]] = feature.data[fields[j]];
+						//tableHTML += '<td>'+feature.data[fields[j]]+'</td>';
+				}
+			}
+			tableRows.push(tableObj);
+			//tableHTML += '</tr>';
+		}
+		$table.bootstrapTable('removeAll');
+		$table.bootstrapTable('append', tableRows);
+	}
+	
+	/*
 	 * Properties
 	 */
 	// Get Cesium 3d viewer

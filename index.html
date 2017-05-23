@@ -204,6 +204,7 @@
 							<div id="3DLayers">
 								<ul class="list-group checked-list-box" id="layerList">
 									<li class="list-group-item" data-checked="true">Base_Map</li>
+									<li class="list-group-item" data-checked="true">SPOT_RGB</li>
 									<li class="list-group-item" data-checked="true">OZP_Zone</li>
 									<li class="list-group-item" data-checked="true">Terrain</li>
 									<li class="list-group-item" data-checked="true">AAM_Model</li>
@@ -327,6 +328,7 @@
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Viewshed&nbsp;analysis" id="btnViewshed"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Clear&nbsp;analysis" id="btnClearAll" onclick="threeDGIS.threeDView.removeAnalysisEntities();"><i class="fa fa-trash fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Walk&nbsp;mode" id="btnWalkmode"><span class="glyphicon glyphicon-road toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Add&nbsp;model" id="btnAddModel"><span class="fa fa-building fa-2x toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
 			<div class="rightToolContainer" style="display:none;"><a href="#" data-toggle="tooltip" data-placement="left" title="Street&nbsp;view" id="btnStreetView"><i class="fa fa-street-view fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Screen&nbsp;capture" id="btnCapture"><i class="fa fa-picture-o fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 		</div>
@@ -463,6 +465,7 @@
 					<select id="transpLayers">
 						<option value="Base_Map">Base_Map</option>
 						<option value="OZP_Zone">OZP_Zone</option>
+						<option value="SPOT_RGB">SPOT_RGB</option>
 						<option value="AAM_Model">AAM_Model</option>
 						<option value="bldg_wgs">bldg_wgs</option>
 						<option value="podium_wgs">podium_wgs</option>
@@ -533,6 +536,36 @@
 			</div>
 		</div>
 	</div>
+	
+	<div class="modal fade" id="gltfModal" tabindex="-1" role="dialog" aria-labelledby="dialogModalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<span class="modal-title">gltf edit</span>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body" id="zoomToBody" style="overflow: auto; max-height:600px; max-width:800px;">
+					<table class="table">
+						<tr>
+							<td style="width:300px;">Rotation:</td>
+							<td><input id="exGLTFRotation" data-slider-id='ex1Slider' type="text" data-slider-min="0" data-slider-max="359" data-slider-step="5" data-slider-value="0"/></td>
+						</tr>
+						<tr>
+							<td>Scale:</td>
+							<td><input id="exGLTFScale" data-slider-id='ex1Slider' type="text" data-slider-min="1" data-slider-max="10" data-slider-step="1" data-slider-value="1"/></input></td>
+						</tr>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<div style="position:absolute; left:70px; top:35px; z-index:1003;">
+		<input id="exDay" data-slider-id='ex1Slider' type="text" data-slider-min="14400" data-slider-max="100800" data-slider-step="1" data-slider-value="14400"/></input>
+	</div>
+	
 	<div id="chart" style="width: 600px;height:400px;position: absolute;top: 0;left: 0;bottom : 0;right : 0;margin: auto;display: none;background-color: #ffffff"></div>
 	
 	<!-- Bootstrap table plugin javascripts -->
@@ -583,8 +616,8 @@
 						url : URL_CONFIG.BINGMAP
 					}),*/
 					terrainProvider : new Cesium.CesiumTerrainProvider({
-						url : host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/HK_DTM_1@dem',
-						isSct : true
+						url: host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/HK_DTM_1@dem',
+						isSct: true
 					}),
 					shadows: true,
 					contextOptions: {
@@ -594,6 +627,7 @@
 				});
 				
 				viewer.scene.globe.enableLighting = true;
+				// viewer.scene.globe.shadows = Cesium.ShadowMode.ENABLED;	// Does not seem to make any difference
 			}
 			catch(e)
 			{
@@ -617,9 +651,7 @@
 				$('#streetViewContainer'),		// Whether to make this a class (contain other functionality?)
 				null		// Not implemented
 			);
-			
-			
-			
+
 			var imageryLayers = viewer.imageryLayers;
 			var imageryProvider = new Cesium.SuperMapImageryProvider({
 				url: host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/dop5k201555402_1@data'
@@ -819,7 +851,7 @@
 							var imageryLayers = viewer.imageryLayers;
 							var imageryProvider = new Cesium.SuperMapImageryProvider({
 								url: host+'/iserver/services/map-OZP_ZONE/rest/maps/OZP_ZONE_WGS84'
-								// url: host+'/iserver/services/map-Phase2_Data/rest/maps/SPOT_RGB'		// Map including image on DB not served right?
+								// url: host+'/iserver/services/map-Phase2_Data/rest/maps/SPOT_NIR'		// Map including image on DB not served right?
 							});
 							
 							var ozpLayer = imageryLayers.addImageryProvider(imageryProvider);
@@ -831,6 +863,30 @@
 							for(var i=0; i<viewer.imageryLayers.length; i++)
 							{
 								if(viewer.imageryLayers.get(i).name=='OZP_Zone')
+								{
+									viewer.imageryLayers.remove(viewer.imageryLayers.get(i));
+									break;
+								}
+							}
+						}
+					}
+					else if(layerName=='SPOT_RGB')
+					{
+						if(isChecked)
+						{							
+							var imageryLayers = viewer.imageryLayers;
+							var imageryProvider = new Cesium.SuperMapImageryProvider({
+								url: host+'/iserver/services/map-Phase2_Data/rest/maps/SPOT_RGB'
+							});
+							
+							var spotLayer = imageryLayers.addImageryProvider(imageryProvider);
+							spotLayer.name = "SPOT_RGB";
+						}
+						else
+						{
+							for(var i=0; i<viewer.imageryLayers.length; i++)
+							{
+								if(viewer.imageryLayers.get(i).name=='SPOT_RGB')
 								{
 									viewer.imageryLayers.remove(viewer.imageryLayers.get(i));
 									break;
@@ -956,14 +1012,15 @@
 
 				// viewer.entities.removeAll();
 				var entityValues = viewer.entities.values;
-				for(var i=entityValues.length-1; i>-1; i--)
+				/*for(var i=entityValues.length-1; i>-1; i--)
 				{
 					var id = entityValues[i].id;
 					if(id.substring(0,5)!='BLOCK')
 						viewer.entities.remove(entityValues[i]);
 					
 					threeDGIS.threeDView.removeAllLabels();
-				}
+				}*/
+				threeDGIS.threeDView.removeAnalysisEntities();
 
 				threeDGIS.threeDView.viewshed.distance = 400;
 				scene.viewFlag = true;
@@ -1089,7 +1146,7 @@
 			
 			transpSlider.bootstrapSlider('on','slideStop',function(val) {
 				var selectedLayer = $('#transpLayers').val();
-				if(selectedLayer=='Base_Map' || selectedLayer=='OZP_Zone')
+				if(selectedLayer=='Base_Map' || selectedLayer=='OZP_Zone' || selectedLayer=='SPOT_RGB')
 				{
 					for(var i=0; i<threeDGIS.threeDView.viewer.imageryLayers.length; i++)
 					{
@@ -1160,6 +1217,48 @@
 				
 				//transpSlider2D.bootstrapSlider('setValue',layer[0].opacity*100);		// 2D map cannot get opacity for layers???
 				transpSlider2D.bootstrapSlider('setValue',100);
+			});
+			
+			var gltfRotationSlider = $('#exGLTFRotation').bootstrapSlider({
+				formatter: function(value) {
+					return value + ' deg';
+				}
+			});
+			
+			gltfRotationSlider.bootstrapSlider('on','change',function(val) {
+				var viewer = threeDGIS.threeDView.viewer;
+				var entity = viewer.entities.getById('model_gltf');
+				
+				entity.orientation = Cesium.Transforms.headingPitchRollQuaternion(
+					entity.position.getValue(new Cesium.JulianDate()), 
+					new Cesium.HeadingPitchRoll(val.newValue*Math.PI/180, 0, 0)
+				);
+			});
+			
+			var gltfScaleSlider = $('#exGLTFScale').bootstrapSlider();
+			
+			gltfScaleSlider.bootstrapSlider('on','change',function(val) {
+				var viewer = threeDGIS.threeDView.viewer;
+				var entity = viewer.entities.getById('model_gltf');
+				
+				entity.model.scale = val.newValue;
+			});
+			
+			var daySlider = $('#exDay').bootstrapSlider({
+				formatter: function(value) {
+					var sec = value-3600*4, secLeft;
+					var hour = Math.floor(sec/3600);
+					secLeft = sec - hour*3600;
+					var min = Math.floor(secLeft/60);
+					sec = secLeft - min*60;
+					
+					return hour+':'+min+':'+sec;
+				}
+			});
+			
+			daySlider.bootstrapSlider('on','change',function(val) {
+				var viewer = threeDGIS.threeDView.viewer;
+				viewer.clock.currentTime.secondsOfDay = val.newValue;
 			});
 			
 			function initReorderButton() {
@@ -1485,15 +1584,15 @@
 			
 			if(threeDGIS.mode[0]=="3D" && threeDGIS.mode.length==1)
 			{
-				// $('#cesiumContainer').width($('#cesiumContainer').width()*5);
-				// $('#cesiumContainer').height($('#cesiumContainer').height()*5);
+				$('#cesiumContainer').width($('#cesiumContainer').width()*3);
+				$('#cesiumContainer').height($('#cesiumContainer').height()*3);
 				
 				var scene = threeDGIS.threeDView.viewer.scene;
-				scene.layers.find('AAM_Model').lodRangeScale = 0.1;
-				scene.layers.find('PolyU').lodRangeScale = 0.1;
-				scene.layers.find('cyber_port').lodRangeScale = 0.1;
-				scene.layers.find('TaiKooShing').lodRangeScale = 0.1;
-				scene.layers.find('SaiKung').lodRangeScale = 0.1;
+				scene.layers.find('AAM_Model').lodRangeScale = 0.05;
+				scene.layers.find('PolyU').lodRangeScale = 0.05;
+				scene.layers.find('cyber_port').lodRangeScale = 0.05;
+				scene.layers.find('TaiKooShing').lodRangeScale = 0.05;
+				scene.layers.find('SaiKung').lodRangeScale = 0.05;
 				
 				$('#txtSystemInfo').val('Preparing more detailed model for screen capture.');
 				console.log(scene.canvas);
@@ -1505,8 +1604,10 @@
 						saveAs(blob, "screenshot.png");
 						$('#txtSystemInfo').val('Screen captured successfully.');
 						
-						//$('#cesiumContainer').width($('#cesiumContainer').width()/5);
-						//$('#cesiumContainer').height($('#cesiumContainer').height()/5);
+						$('#cesiumContainer').width($('#cesiumContainer').width()/3);
+						$('#cesiumContainer').height($('#cesiumContainer').height()/3);
+						
+						resizeElement();
 						
 						setTimeout(function() {
 							scene.layers.find('AAM_Model').lodRangeScale = 0.4;
@@ -1516,7 +1617,7 @@
 							scene.layers.find('SaiKung').lodRangeScale = 0.4;
 						},300);
 					}, "image/png");
-				}, 5000);	// 5 sec does not seem to be enough, but not yet found any event or promise indicating that refresh is done
+				}, 20000);	// 5 sec does not seem to be enough, but not yet found any event or promise indicating that refresh is done
 			}
 			else if(threeDGIS.mode[0]=="2D" && threeDGIS.mode.length==1)
 			{
@@ -1531,6 +1632,10 @@
 				
 				MapToImg&&MapToImg.excute(threeDGIS.twoDView.map);
 			}
+		});
+		
+		$('#btnAddModel').click(function() {
+			threeDGIS.threeDView.addGLTF = true;
 		});
 	</script>
 	
@@ -2093,54 +2198,8 @@
 			var i, len, features, feature, result = getFeaturesEventArgs.result;
 			if (result && result.features) {
 				features = result.features;
-				var firstFeature = features[0];
 				
-				tableHTML += '<thead><tr>';
-				var $table = $('#attributeTable');
-				var columns = [];
-				for(var paraName in firstFeature.data)
-				{
-					if(paraName.toUpperCase().substr(0,2) != 'SM')
-					{
-						fields.push(paraName);
-						// tableHTML += '<th data-field="'+paraName+'">'+paraName+'</th>';
-						columns.push({
-							field: paraName,                   
-                            title: paraName,
-                            sortable: true,
-							filter: {
-								type: "input"
-							}
-						});
-					}
-				}
-				$table.bootstrapTable('refreshOptions',{
-					columns:columns,
-					filter:true,
-					exportDataType: 'all'
-				});  
-				// tableHTML += '</tr></thead>';
-				// $("#attributeTable").html(tableHTML);
-				
-				var tableRows = [];
-				for(var i=0; i<features.length; i++)
-				{
-					//tableHTML += '<tr>';
-					var feature = features[i];
-					var tableObj = {};
-					for(var j=0; j<fields.length; j++)
-					{
-						if(fields[j].toUpperCase().substr(0,2) != 'SM')
-						{
-							tableObj[fields[j]] = feature.data[fields[j]];
-								//tableHTML += '<td>'+feature.data[fields[j]]+'</td>';
-						}
-					}
-					tableRows.push(tableObj);
-					//tableHTML += '</tr>';
-				}
-				$table.bootstrapTable('removeAll');
-				$table.bootstrapTable('append', tableRows);
+				ThreeDGIS.rewriteAttributeTable(features);
 			}
 		}
 	</script>

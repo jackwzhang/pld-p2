@@ -73,7 +73,8 @@ function ThreeDBlock(options)
 			var polygon = new Cesium.PolygonGraphics({
 				hierarchy: new Cesium.PolygonHierarchy(this.vertices),
 				extrudedHeight: this.extrudeHeight+this.baseHeight,
-				height: this.baseHeight
+				height: this.baseHeight,
+				shadows: Cesium.ShadowMode.ENABLED
 			});
 			
 			var id = makeID(this);

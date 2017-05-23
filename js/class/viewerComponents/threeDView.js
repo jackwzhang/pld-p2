@@ -33,6 +33,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	
 	// Flags
 	this.selectBlockFlag = true;		// Whether enable select 3D Blocks. Not implemented yet.
+	this.addGLTF = false;
 	
 	/*
 	 * Private functions
@@ -70,7 +71,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		for(var i=entities.length-1; i>-1; i--)
 		{
 			var id = entities[i].id;
-			if(id.substring(0,5)!='BLOCK')
+			if(id.substring(0,5)!='BLOCK' && id!='model_gltf')
 				this.viewer.entities.remove(entities[i]);
 		}
 		
@@ -312,6 +313,35 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	ThreeDView.prototype.enableClickSelect = function() {
 		_handler.setInputAction(function(e){
 			var thisObj = threeDGIS.threeDView;
+			var viewer = thisObj.viewer;
+			var scene = viewer.scene;
+			var cartesianPosition = scene.pickPosition(e.position);
+			
+			if(thisObj.addGLTF)
+			{
+				var cartographic = Cesium.Cartographic.fromCartesian(cartesianPosition);
+				var hpr = new Cesium.HeadingPitchRoll($('#exGLTFRotation').bootstrapSlider('getValue')*Math.PI/180, 0, 0);
+				var orientation = Cesium.Transforms.headingPitchRollQuaternion(cartesianPosition, hpr);
+				
+				viewer.entities.removeById('model_gltf');
+				
+				var entity = viewer.entities.add({
+					name: 'model_gltf',
+					id: 'model_gltf',
+					position: cartesianPosition,
+					orientation : orientation,
+					model: {
+						uri : 'assets/model/glTF/H10G0244.gltf',
+						scale: $('#exGLTFScale').bootstrapSlider('getValue'),
+					}
+				});
+				
+				thisObj.addGLTF = false;
+				$('#gltfModal').modal('show');
+			}
+			
+			// Able to rotate the model with the following
+			// entity.orientation = Cesium.Transforms.headingPitchRollQuaternion(entity.position.getValue(new Cesium.JulianDate()), new Cesium.HeadingPitchRoll(1.4, 0, 0));
 			
 			var pickedObject = viewer.scene.pick(e.position);
 			var id;
@@ -345,6 +375,43 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 			
 			if(thisObj.selectBlockFlag)
 				thisObj.addBlockSelection(id);
+				
+			// Test buffer
+			var cartographic = Cesium.Cartographic.fromCartesian(cartesianPosition);
+			var hkpt = CoordTransform.wgs2hk(cartographic.longitude*180/Math.PI, cartographic.latitude*180/Math.PI);
+			var point2D = new SuperMap.Geometry.Point(hkpt[0], hkpt[1]);
+			
+			var selectedFeatureProcessCompleted = function(e)
+			{
+				var features = e.result.features;
+				ThreeDGIS.rewriteAttributeTable(features);
+				
+				$('#iconAttributeTable').click();
+				
+				var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
+				layerBldgVec.releaseSelection();
+				var selectedIDs = [];
+				for(var i=0; i<features.length; i++)
+					selectedIDs.push(Number(features[i].data["SMID"]));
+					
+				layerBldgVec.setSelection(selectedIDs);
+			}
+			
+			var processFailed = function(e){console.log('Buffer not successful');}
+			
+			var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
+				datasetNames: ["10.40.106.82_P2_Sample_Data:Bldg_HK80"],		// Using hardcode
+				bufferDistance: 300,
+				geometry: point2D,
+				toIndex:9999
+			});
+			var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
+				eventListeners: {
+					"processCompleted": selectedFeatureProcessCompleted,
+					"processFailed": processFailed
+				}
+			});
+			getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
 		},Cesium.ScreenSpaceEventType.LEFT_CLICK);
 	}
 	
@@ -376,7 +443,9 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 				}
 			}
 			else
+			{
 				return;
+			}
 		},Cesium.ScreenSpaceEventType.LEFT_CLICK);
 	}
 	
