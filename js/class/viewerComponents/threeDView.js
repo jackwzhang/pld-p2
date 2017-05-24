@@ -33,7 +33,10 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	
 	// Flags
 	this.selectBlockFlag = true;		// Whether enable select 3D Blocks. Not implemented yet.
-	this.addGLTF = false;
+	this.addGLTFFlag = false;
+	this.pointBufferFlag = false;
+	
+	this.selectedFeature;
 	
 	/*
 	 * Private functions
@@ -317,7 +320,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 			var scene = viewer.scene;
 			var cartesianPosition = scene.pickPosition(e.position);
 			
-			if(thisObj.addGLTF)
+			if(thisObj.addGLTFFlag)
 			{
 				var cartographic = Cesium.Cartographic.fromCartesian(cartesianPosition);
 				var hpr = new Cesium.HeadingPitchRoll($('#exGLTFRotation').bootstrapSlider('getValue')*Math.PI/180, 0, 0);
@@ -336,7 +339,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 					}
 				});
 				
-				thisObj.addGLTF = false;
+				thisObj.addGLTFFlag = false;
 				$('#gltfModal').modal('show');
 			}
 			
@@ -377,41 +380,47 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 				thisObj.addBlockSelection(id);
 				
 			// Test buffer
-			var cartographic = Cesium.Cartographic.fromCartesian(cartesianPosition);
-			var hkpt = CoordTransform.wgs2hk(cartographic.longitude*180/Math.PI, cartographic.latitude*180/Math.PI);
-			var point2D = new SuperMap.Geometry.Point(hkpt[0], hkpt[1]);
-			
-			var selectedFeatureProcessCompleted = function(e)
+			/*if(thisObj.pointBufferFlag)
 			{
-				var features = e.result.features;
-				ThreeDGIS.rewriteAttributeTable(features);
+				var cartographic = Cesium.Cartographic.fromCartesian(cartesianPosition);
+				var hkpt = CoordTransform.wgs2hk(cartographic.longitude*180/Math.PI, cartographic.latitude*180/Math.PI);
+				var point2D = new SuperMap.Geometry.Point(hkpt[0], hkpt[1]);
 				
-				$('#iconAttributeTable').click();
-				
-				var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
-				layerBldgVec.releaseSelection();
-				var selectedIDs = [];
-				for(var i=0; i<features.length; i++)
-					selectedIDs.push(Number(features[i].data["SMID"]));
+				var selectedFeatureProcessCompleted = function(e)
+				{
+					var features = e.result.features;
+					ThreeDGIS.rewriteAttributeTable(features);
 					
-				layerBldgVec.setSelection(selectedIDs);
-			}
-			
-			var processFailed = function(e){console.log('Buffer not successful');}
-			
-			var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
-				datasetNames: ["10.40.106.82_P2_Sample_Data:Bldg_HK80"],		// Using hardcode
-				bufferDistance: 300,
-				geometry: point2D,
-				toIndex:9999
-			});
-			var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
-				eventListeners: {
-					"processCompleted": selectedFeatureProcessCompleted,
-					"processFailed": processFailed
+					$('#iconAttributeTable').click();
+					
+					var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
+					layerBldgVec.releaseSelection();
+					var selectedIDs = [];
+					for(var i=0; i<features.length; i++)
+						selectedIDs.push(Number(features[i].data["SMID"]));
+						
+					layerBldgVec.setSelection(selectedIDs);
+					
 				}
-			});
-			getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+				
+				var processFailed = function(e){console.log('Buffer not successful');}
+				
+				var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
+					datasetNames: ["10.40.106.82_P2_Sample_Data:Bldg_HK80"],		// Using hardcode
+					bufferDistance: 300,
+					geometry: point2D,
+					toIndex:9999
+				});
+				var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
+					eventListeners: {
+						"processCompleted": selectedFeatureProcessCompleted,
+						"processFailed": processFailed
+					}
+				});
+				getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+				
+				thisObj.pointBufferFlag = false;
+			}*/
 		},Cesium.ScreenSpaceEventType.LEFT_CLICK);
 	}
 	
@@ -556,5 +565,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		$('#attributeTable').bootstrapTable( 'resetView' , {height: 400} );
 		$('#attributeTable').bootstrapTable('append', [feature]);
 		$('#dialogModal').modal('show');
+		
+		threeDGIS.threeDView.selectedFeature = feature;
 	});
 }

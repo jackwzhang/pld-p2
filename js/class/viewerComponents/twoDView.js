@@ -186,10 +186,12 @@ function TwoDView(map, mapDiv, toolDiv)
 						var y = smVertices[j].y;
 						var x = smVertices[j].x;
 						
-						var wgspt = CoordTransform.hk2wgs(x,y);
+						/*var wgspt = CoordTransform.hk2wgs(x,y);
 						
 						var cartesian = Cesium.Cartesian3.fromDegrees(wgspt[0], wgspt[1], baseHeight);
-						cartesianVertices.push(cartesian);
+						verticesCartesian.push(cartesian);*/
+						
+						cartesianVertices.push(CoordTransform.hk2cartesian(x,y,baseHeight));
 					}
 					
 					var tbk = new ThreeDBlock({

@@ -328,9 +328,10 @@
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Viewshed&nbsp;analysis" id="btnViewshed"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Clear&nbsp;analysis" id="btnClearAll" onclick="threeDGIS.threeDView.removeAnalysisEntities();"><i class="fa fa-trash fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Walk&nbsp;mode" id="btnWalkmode"><span class="glyphicon glyphicon-road toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
-			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Add&nbsp;model" id="btnAddModel"><span class="fa fa-building fa-2x toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
 			<div class="rightToolContainer" style="display:none;"><a href="#" data-toggle="tooltip" data-placement="left" title="Street&nbsp;view" id="btnStreetView"><i class="fa fa-street-view fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Add&nbsp;model" id="btnAddModel"><span class="fa fa-building fa-2x toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Screen&nbsp;capture" id="btnCapture"><i class="fa fa-picture-o fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Buffer&nbsp;analysis" id="btnBuffer"><span class="glyphicon glyphicon-record toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
 		</div>
 		
 		<div id="toolsetEditing" style="position:absolute; right:10px; bottom:120px; z-index=3000; display:none">
@@ -562,9 +563,58 @@
 		</div>
 	</div>
 	
-	<div style="position:absolute; left:70px; top:35px; z-index:1003;">
-		<input id="exDay" data-slider-id='ex1Slider' type="text" data-slider-min="14400" data-slider-max="100800" data-slider-step="1" data-slider-value="14400"/></input>
+	<div class="modal fade" id="bufferModal" tabindex="-1" role="dialog" aria-labelledby="dialogModalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<span class="modal-title">Buffer analysis</span>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body"style="overflow: auto; max-height:600px; max-width:800px;">
+					<!-- Should be a bootstrap form here
+						including buffer mode: point, polyline, polygon, feature(building/application?)
+						buffer size
+						which layers involved in buffer analysis? -->
+					<form id="bufferForm" class="form-horizontal">
+						<fieldset id="bufferRadioGroup" class="form-group row">
+							<label class="control-label col-xs-3" for="pwd">Buffer type:</label>
+							<div class="form-check form-check-inline col-xs-3">
+								<label class="form-check-label">
+									<input class="form-check-input" type="radio" name="bfrType" id="inlineRadio1" value="0"> Point
+								</label>
+							</div>
+							<div class="form-check form-check-inline col-xs-3">
+								<label class="form-check-label">
+									<input class="form-check-input" type="radio" name="bfrType" id="inlineRadio2" value="1"> Polyline
+								</label>
+							</div>
+							<div class="form-check form-check-inline col-xs-3">
+								<label class="form-check-label">
+									<input class="form-check-input" type="radio" name="bfrType" id="inlineRadio3" value="2" disabled> Polygon
+								</label>
+							</div>
+						</fieldset>
+						
+						<div class="form-group">
+							<label class="control-label col-xs-3" for="bfrSize">Buffer size (m):</label>
+							<div class="col-xs-5"> 
+								<input type="input" class="form-control" name="bfrSize" id="bfrSize" value="50">
+							</div>
+						</div>
+						
+						<button type="button" id="btnBufferSubmit" class="btn btn-primary" data-dismiss="modal">Submit</button>
+						<button type="button" class="btn" data-dismiss="modal">Close</button>
+					</form>
+				</div>
+			</div>
+		</div>
 	</div>
+	
+	<!--<div style="position:absolute; left:70px; top:35px; z-index:1003;">
+		<input id="exDay" data-slider-id='ex1Slider' type="text" data-slider-min="14400" data-slider-max="100800" data-slider-step="1" data-slider-value="14400"/></input>
+	</div>-->
 	
 	<div id="chart" style="width: 600px;height:400px;position: absolute;top: 0;left: 0;bottom : 0;right : 0;margin: auto;display: none;background-color: #ffffff"></div>
 	
@@ -595,8 +645,10 @@
 			host = protocol+"//" + host;
 		}
 		
+		// Some hard code. Pay attention on how to fix this
 		// Hard code on 2D map url, using Phase 1 map
 		var mapUrl = host + "/iserver/services/map-PlanD_Phase1/rest/maps/Map";
+		var handlerPolygon, computeBuffer;
 		
 		// Hard code on terrain URL for profile analysis
 		var profileUrl = host+ '/iserver/services/spatialAnalysis-Phase2_Data/restjsr/spatialanalyst/datasets/HK_DTM_1@10.40.106.82_P2_Sample_Data/terraincalculation/profile.jsonp?returnContent=true';
@@ -634,6 +686,65 @@
 				// Remove the catch statement
 				;//location.reload();
 			}
+			
+			handlerPolygon = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Polygon);
+			computeBuffer = function(result){
+				var polygon = result.object.polygon;
+				var point2Ds = [];
+				
+				if(polygon.hierarchy)
+				{
+					var hierarchy = polygon.hierarchy.getValue();
+					
+					for(var i=0; i<hierarchy.length; i++)
+					{
+						var cartographic = Cesium.Cartographic.fromCartesian(hierarchy[i]);
+						var hkpt = CoordTransform.wgs2hk(cartographic.longitude*180/Math.PI, cartographic.latitude*180/Math.PI);
+						point2Ds.push(new SuperMap.Geometry.Point(hkpt[0], hkpt[1]));
+					}
+					var linearRings = new SuperMap.Geometry.LinearRing(point2Ds);
+					var region = new SuperMap.Geometry.Polygon([linearRings]);
+				}
+				else
+					region = polygon;
+				
+				var selectedFeatureProcessCompleted = function(e)
+				{
+					var features = e.result.features;
+					ThreeDGIS.rewriteAttributeTable(features);
+					
+					$('#iconAttributeTable').click();
+					
+					var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
+					layerBldgVec.releaseSelection();
+					var selectedIDs = [];
+					for(var i=0; i<features.length; i++)
+						selectedIDs.push(Number(features[i].data["SMID"]));
+						
+					layerBldgVec.setSelection(selectedIDs);
+				}
+				
+				var processFailed = function(e){console.log('Buffer not successful');}
+				
+				var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
+					datasetNames: ["10.40.106.82_P2_Sample_Data:Bldg_HK80"],		// Using hardcode
+					bufferDistance: Number($('#bfrSize').val()),
+					geometry: region,
+					toIndex:9999
+				});
+				var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
+					eventListeners: {
+						"processCompleted": selectedFeatureProcessCompleted,
+						"processFailed": processFailed
+					}
+				});
+				getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+				
+				// thisObj.pointBufferFlag = false;
+			}
+			
+			// Use a polygon to perform buffer
+			handlerPolygon.drawEvt.addEventListener(computeBuffer);
 			
 			var camera = viewer.scene.camera;
 			camera.setView({
@@ -1244,7 +1355,7 @@
 				entity.model.scale = val.newValue;
 			});
 			
-			var daySlider = $('#exDay').bootstrapSlider({
+			/*var daySlider = $('#exDay').bootstrapSlider({
 				formatter: function(value) {
 					var sec = value-3600*4, secLeft;
 					var hour = Math.floor(sec/3600);
@@ -1259,7 +1370,7 @@
 			daySlider.bootstrapSlider('on','change',function(val) {
 				var viewer = threeDGIS.threeDView.viewer;
 				viewer.clock.currentTime.secondsOfDay = val.newValue;
-			});
+			});*/
 			
 			function initReorderButton() {
 				$('.layerUp').click(function() {
@@ -1356,10 +1467,12 @@
 							var y = vertices[j].y;
 							var x = vertices[j].x;
 							
-							var wgspt = CoordTransform.hk2wgs(x,y);
+							/*var wgspt = CoordTransform.hk2wgs(x,y);
 							
 							var cartesian = Cesium.Cartesian3.fromDegrees(wgspt[0], wgspt[1], baseHeight);
-							verticesCartesian.push(cartesian);
+							verticesCartesian.push(cartesian);*/
+							
+							verticesCartesian.push(CoordTransform.hk2cartesian(x,y,baseHeight));
 						}
 						
 						var tbk = new ThreeDBlock({
@@ -1635,7 +1748,75 @@
 		});
 		
 		$('#btnAddModel').click(function() {
-			threeDGIS.threeDView.addGLTF = true;
+			threeDGIS.threeDView.addGLTFFlag = true;
+		});
+		
+		$('#btnBuffer').click(function() {
+			// threeDGIS.threeDView.pointBufferFlag = true;
+			$('#bufferModal').modal('show');
+		});
+		
+		$('#btnBufferSubmit').click(function() {
+			var viewer = threeDGIS.threeDView.viewer;
+			var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
+			var layerPodiumVec = viewer.scene.layers.find('podium_wgs');
+			var layerAAM = viewer.scene.layers.find('AAM_Model');
+			
+			var bldgSelect = layerBldgVec.getSelection();
+			var podiumSelect = layerPodiumVec.getSelection();
+			var aamSelect = layerAAM.getSelection();
+			
+			var datasetName, selectedID;
+			// May need some loop instead of hard code like this
+			if(bldgSelect.length==1)
+			{
+				datasetName = 'Bldg_HK80';	// Apply the selected id to find the feature polygon and calculate buffer based on this geometry
+				selectedID = bldgSelect[0];
+			}
+			else if(podiumSelect.length==1)
+			{
+				datasetName = 'Podium_HK80';
+				selectedID = podiumSelect[0];
+			}
+			else if(aamSelect.length==1)
+			{
+				datasetName = 'AAM_Model';
+				selectedID = aamSelect[0];
+			}
+			else	// If not selected any feature, user draw a polygon manually
+				handlerPolygon.activate();
+				
+			var getFeatureParam, getFeatureBySQLService, getFeatureBySQLParams;
+			//alert("APP_CASE_NO LIKE '"+attributeValue+"%' OR LOCAT_ADDR LIKE '%"+attributeValue+"%'");
+
+			getFeatureParam = new SuperMap.REST.FilterParameter({
+				name: datasetName+'@10.40.106.82_P2_Sample_Data',
+				//attributeFilter: "APP_CASE_NO='"+attributeValue+"'"
+				attributeFilter: 'SMID='+selectedID
+			});
+			
+			getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
+				queryParameter: getFeatureParam,
+				datasetNames:["10.40.106.82_P2_Sample_Data:"+datasetName],		// Hardcode
+				toIndex: 999999
+			});
+			getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(dataUrl, {
+				eventListeners: {"processCompleted": QueryCompleted, "processFailed": undefined}
+			});
+
+			getFeatureBySQLService.processAsync(getFeatureBySQLParams);
+			
+			function QueryCompleted(e) {
+				var geometry = e.result.features[0].geometry;
+				var object = {
+					polygon: geometry
+				};
+				var result = {
+					object: object
+				};
+				
+				computeBuffer(result);
+;			}
 		});
 	</script>
 	
