@@ -18,6 +18,11 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	var _modifiedList = [];		// Store the IDs representing the features modified
 	var _labelCollection;
 	
+	// Draw handlers
+	var _drawPointHandler = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Point);
+	var _drawPolylineHandler = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Line);
+	var _drawPolygonHandler = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Polygon);
+	
 	// Viewshed position
 	this.viewPosition;
 	
@@ -34,7 +39,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	// Flags
 	this.selectBlockFlag = true;		// Whether enable select 3D Blocks. Not implemented yet.
 	this.addGLTFFlag = false;
-	this.pointBufferFlag = false;
+	this.bufferFlag = false;
 	
 	this.selectedFeature;
 	
@@ -82,6 +87,10 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		_handlerHeight.clear();
 		this.viewshed.destroy();
 		this.viewshed = new Cesium.ViewShed3D(threeDGIS.threeDView.viewer.scene);
+	
+		_drawPointHandler.clear();
+		_drawPolylineHandler.clear();
+		_drawPolygonHandler.clear();
 	}
 	
 	// Add label manually into 3D
@@ -259,6 +268,195 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	// Confirm modification for blocks
 	ThreeDView.prototype.confirmEdit = function() {
 		
+	}
+	
+	// Enable identifying
+	ThreeDView.prototype.enableIdentifying = function() {
+		var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
+		var layerPodiumVec = viewer.scene.layers.find('podium_wgs');
+		var layerAAM = viewer.scene.layers.find('AAM_Model');
+		
+		layerBldgVec.setQueryParameter({
+			url: host+'/iserver/services/data-Phase2_Data/rest/data',
+			dataSourceName: '10.40.106.82_P2_Sample_Data',
+			dataSetName: 'Bldg_HK80',
+			keyWord: 'SmID'
+		});
+		
+		layerPodiumVec.setQueryParameter({
+			url: host+'/iserver/services/data-Phase2_Data/rest/data',
+			dataSourceName: '10.40.106.82_P2_Sample_Data',
+			dataSetName: 'Podium_HK80',
+			keyWord: 'SmID'
+		});
+		
+		layerAAM.setQueryParameter({
+			url: host+'/iserver/services/data-Phase2_Data/rest/data',
+			dataSourceName: '10.40.106.82_P2_Sample_Data',
+			dataSetName: 'AAM_Model',
+			keyWord: 'SmID'
+		});
+	}
+	
+	// Disable identifying
+	ThreeDView.prototype.disableIdentifying = function() {
+		var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
+		var layerPodiumVec = viewer.scene.layers.find('podium_wgs');
+		var layerAAM = viewer.scene.layers.find('AAM_Model');
+		
+		layerBldgVec.queryParameter = undefined;
+		layerPodiumVec.queryParameter = undefined;
+		layerAAM.queryParameter = undefined;
+	}
+	
+	// Compute buffer analysis and overlaying between buffer and specified layer
+	ThreeDView.prototype.computeBuffer = function(result){
+		if(threeDGIS.threeDView.bufferFlag)
+		{
+			var drawObject = result.object;
+			var region;		// The geometry for calculating the buffer
+			
+			// Point mode
+			if(drawObject instanceof Cesium.PointPrimitive)
+			{
+				var cartesian = drawObject.position;
+				var carto = Cesium.Cartographic.fromCartesian(cartesian);
+				var hkpt = CoordTransform.wgs2hk(carto.longitude*180/Math.PI, carto.latitude*180/Math.PI);
+				
+				region = new SuperMap.Geometry.Point(hkpt[0], hkpt[1]);
+			}
+			// Polyline mode
+			else if(drawObject instanceof Cesium.Polyline)
+			{
+				var cartesians = drawObject.positions;
+				console.log(cartesians);
+				
+				var points = [];
+				for(var i=0; i<cartesians.length; i++)
+				{
+					var carto = Cesium.Cartographic.fromCartesian(cartesians[i]);
+					var hkpt = CoordTransform.wgs2hk(carto.longitude*180/Math.PI, carto.latitude*180/Math.PI);
+					
+					points.push(new SuperMap.Geometry.Point(hkpt[0], hkpt[1]));
+				}
+				region = new SuperMap.Geometry.LineString(points);
+			}
+			// Polygon mode
+			else if(drawObject instanceof Cesium.Entity && drawObject._polygon)
+			{
+				var polygon = result.object.polygon;
+				var point2Ds = [];
+				
+				if(polygon.hierarchy)
+				{
+					var hierarchy = polygon.hierarchy.getValue();
+					
+					for(var i=0; i<hierarchy.length; i++)
+					{
+						var cartographic = Cesium.Cartographic.fromCartesian(hierarchy[i]);
+						var hkpt = CoordTransform.wgs2hk(cartographic.longitude*180/Math.PI, cartographic.latitude*180/Math.PI);
+						point2Ds.push(new SuperMap.Geometry.Point(hkpt[0], hkpt[1]));
+					}
+					var linearRings = new SuperMap.Geometry.LinearRing(point2Ds);
+					var region = new SuperMap.Geometry.Polygon([linearRings]);
+				}
+				else
+					region = polygon;
+			}
+			// Polygon from identified feature
+			else
+				region = drawObject.polygon;
+			
+			// HARD CODE determining which layer to search
+			// Think twice about this
+			
+			var selectedFeatureProcessCompleted = function(e)
+			{
+				var features = e.result.features;
+				ThreeDGIS.rewriteAttributeTable(features);
+				
+				$('#iconAttributeTable').click();
+				
+				var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
+				layerBldgVec.releaseSelection();
+				var selectedIDs = [];
+				for(var i=0; i<features.length; i++)
+					selectedIDs.push(Number(features[i].data["SMID"]));
+					
+				layerBldgVec.setSelection(selectedIDs);
+				
+				_drawPointHandler.clear();
+				_drawPolylineHandler.clear();
+				_drawPolygonHandler.clear();
+				
+				threeDGIS.threeDView.bufferFlag = false;
+			}
+			
+			var processFailed = function(e){console.log('Buffer not successful');}
+			
+			var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
+				datasetNames: ["10.40.106.82_P2_Sample_Data:Bldg_HK80"],		// Using hardcode
+				bufferDistance: Number($('#bfrSize').val()),
+				geometry: region,
+				toIndex:9999
+			});
+			var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
+				eventListeners: {
+					"processCompleted": selectedFeatureProcessCompleted,
+					"processFailed": processFailed
+				}
+			});
+			getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+			
+			var bufferAnalystCompleted = function(args) {
+				if(args){
+					var bufferResultGeometry = args.result.resultGeometry;
+					var hkVertices = bufferResultGeometry.getVertices();
+					
+					// Convert the HK80 coordinate of the vertices to WGS84 and then plot out
+					var wgsVertices = [];
+					for(var i=0; i<hkVertices.length; i++)
+					{
+						var wgspt = CoordTransform.hk2wgs(hkVertices[i].x, hkVertices[i].y);
+						wgsVertices.push(Cesium.Cartesian3.fromDegrees(wgspt[0],wgspt[1]));
+					}
+					
+					var polygon = new Cesium.PolygonGraphics({
+						hierarchy: new Cesium.PolygonHierarchy(wgsVertices),
+						material: new Cesium.Color(1.0, 0.2, 0.6, 0.7),
+						outline: true,
+						outlineColor : Cesium.Color.BLACK,
+					});
+					
+					threeDGIS.threeDView.viewer.entities.add({
+						id: 'analyze_buffer',
+						polygon: polygon,
+						outline: true,
+						shadows: Cesium.ShadowMode.ENABLED		// Does not seem to be working
+					});
+				}
+			}
+			
+			var bufferServiceByGeometry = new SuperMap.REST.BufferAnalystService(host+'/iserver/services/spatialAnalysis-Phase2_Data/restjsr/spatialanalyst'),
+				bufferDistance = new SuperMap.REST.BufferDistance({
+					value: Number($('#bfrSize').val())
+				}),
+				bufferSetting = new SuperMap.REST.BufferSetting({
+					endType: SuperMap.REST.BufferEndType.ROUND,
+					leftDistance: bufferDistance,
+					rightDistance: bufferDistance,
+					semicircleLineSegment: 20
+				}),
+				geoBufferAnalystParam = new SuperMap.REST.GeometryBufferAnalystParameters({
+					sourceGeometry: region,
+					bufferSetting: bufferSetting
+				});
+
+			bufferServiceByGeometry.events.on({"processCompleted": bufferAnalystCompleted});
+			bufferServiceByGeometry.processAsync(geoBufferAnalystParam);
+		}
+		
+		// thisObj.pointBufferFlag = false;
 	}
 	
 	// Update geometry for a specified entity
@@ -458,6 +656,25 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		},Cesium.ScreenSpaceEventType.LEFT_CLICK);
 	}
 	
+	// Start drawing
+	ThreeDView.prototype.startDrawing = function(type) {
+		_drawPointHandler.clear();
+		_drawPolylineHandler.clear();
+		_drawPolygonHandler.clear();
+		
+		switch(type) {
+			case 'point':
+				_drawPointHandler.activate();
+				break;
+			case 'polyline':
+				_drawPolylineHandler.activate();
+				break;
+			case 'polygon':
+				_drawPolygonHandler.activate();
+				break;
+		}
+	}
+	
 	/*
 	 * Initialization after construction
 	 */
@@ -542,30 +759,102 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	
 	// Pick S3M objects event
 	this.viewer.pickEvent.addEventListener(function(feature){
-		var columns = [];
-		var tableObj = {};
-		for (var property in feature) {
-			if(property.toUpperCase().substr(0,2) != 'SM' || property.toUpperCase()=='SMID')
+		if(threeDGIS.threeDView.bufferFlag)
+		{
+			var id = feature.SMID;
+			// console.log(feature);	// But how to get to know which layer the feature belongs to?
+			
+			var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
+			var layerPodiumVec = viewer.scene.layers.find('podium_wgs');
+			var layerAAM = viewer.scene.layers.find('AAM_Model');
+			
+			var bldgSelect = layerBldgVec.getSelection();
+			var podiumSelect = layerPodiumVec.getSelection();
+			var aamSelect = layerAAM.getSelection();
+			
+			var datasetName, selectedID;
+			// May need some loop instead of hard code like this
+			if(bldgSelect.length==1)
 			{
-				columns.push({
-					field: property,                   
-					title: property,
-					sortable: true,
-					filter: {
-						type: "input"
-					}
-				});
+				datasetName = 'Bldg_HK80';	// Apply the selected id to find the feature polygon and calculate buffer based on this geometry
+				selectedID = bldgSelect[0];
 			}
+			else if(podiumSelect.length==1)
+			{
+				datasetName = 'Podium_HK80';
+				selectedID = podiumSelect[0];
+			}
+			else if(aamSelect.length==1)
+			{
+				datasetName = 'AAM_Model';
+				selectedID = aamSelect[0];
+			}
+			else
+				return;
+				
+			getFeatureParam = new SuperMap.REST.FilterParameter({
+				name: datasetName+'@10.40.106.82_P2_Sample_Data',
+				//attributeFilter: "APP_CASE_NO='"+attributeValue+"'"
+				attributeFilter: 'SMID='+selectedID
+			});
+			
+			getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
+				queryParameter: getFeatureParam,
+				datasetNames:["10.40.106.82_P2_Sample_Data:"+datasetName],		// Hardcode
+				toIndex: 999999
+			});
+			// Note to redefine the 'host' to make it better
+			getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(host + '/iserver/services/data-Phase2_Data/rest/data', {
+				eventListeners: {"processCompleted": QueryCompleted, "processFailed": undefined}
+			});
+
+			getFeatureBySQLService.processAsync(getFeatureBySQLParams);
+			
+			function QueryCompleted(e) {
+				var geometry = e.result.features[0].geometry;
+				var object = {
+					polygon: geometry
+				};
+				var result = {
+					object: object
+				};
+				
+				threeDGIS.threeDView.computeBuffer(result);
+;			}
 		}
-		
-		$('#attributeTable').bootstrapTable('refreshOptions',{
-			columns:columns
-		});
-		$('#attributeTable').bootstrapTable('removeAll');
-		$('#attributeTable').bootstrapTable( 'resetView' , {height: 400} );
-		$('#attributeTable').bootstrapTable('append', [feature]);
-		$('#dialogModal').modal('show');
-		
-		threeDGIS.threeDView.selectedFeature = feature;
+		else
+		{
+			var columns = [];
+			var tableObj = {};
+			for (var property in feature) {
+				if(property.toUpperCase().substr(0,2) != 'SM' || property.toUpperCase()=='SMID')
+				{
+					columns.push({
+						field: property,                   
+						title: property,
+						sortable: true,
+						filter: {
+							type: "input"
+						}
+					});
+				}
+			}
+			
+			$('#attributeTable').bootstrapTable('refreshOptions',{
+				columns:columns
+			});
+			$('#attributeTable').bootstrapTable('removeAll');
+			$('#attributeTable').bootstrapTable( 'resetView' , {height: 400} );
+			$('#attributeTable').bootstrapTable('append', [feature]);
+			$('#dialogModal').modal('show');
+			
+			threeDGIS.threeDView.selectedFeature = feature;
+		}
 	});
+	
+	// Draw handler, mainly drawing to prepare for analysis
+	// The event handler may not be called 'computeBuffer', but checks the buffer flag and others
+	_drawPointHandler.drawEvt.addEventListener(this.computeBuffer);
+	_drawPolylineHandler.drawEvt.addEventListener(this.computeBuffer);
+	_drawPolygonHandler.drawEvt.addEventListener(this.computeBuffer);
 }

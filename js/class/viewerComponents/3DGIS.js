@@ -186,20 +186,23 @@ function ThreeDGIS(threeDView, twoDView, streetview, panoview)
 
 		var $table = $('#attributeTable');
 		var columns = [];
-		for(var paraName in firstFeature.data)
+		if(firstFeature!=undefined)
 		{
-			if(paraName.toUpperCase().substr(0,2) != 'SM')
+			for(var paraName in firstFeature.data)
 			{
-				fields.push(paraName);
-				// tableHTML += '<th data-field="'+paraName+'">'+paraName+'</th>';
-				columns.push({
-					field: paraName,                   
-					title: paraName,
-					sortable: true,
-					filter: {
-						type: "input"
-					}
-				});
+				if(paraName.toUpperCase().substr(0,2) != 'SM')
+				{
+					fields.push(paraName);
+					// tableHTML += '<th data-field="'+paraName+'">'+paraName+'</th>';
+					columns.push({
+						field: paraName,                   
+						title: paraName,
+						sortable: true,
+						filter: {
+							type: "input"
+						}
+					});
+				}
 			}
 		}
 		$table.bootstrapTable('refreshOptions',{
