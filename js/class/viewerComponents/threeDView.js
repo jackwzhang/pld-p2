@@ -40,6 +40,8 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	this.selectBlockFlag = true;		// Whether enable select 3D Blocks. Not implemented yet.
 	this.addGLTFFlag = false;
 	this.bufferFlag = false;
+	this.analysisFlag = false;		// Detect whether whatever 3D analysis is going on. May consider to split this into different items
+	this.identifyingFlag = false;
 	
 	this.selectedFeature;
 	
@@ -342,7 +344,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 				region = new SuperMap.Geometry.LineString(points);
 			}
 			// Polygon mode
-			else if(drawObject instanceof Cesium.Entity && drawObject._polygon)
+			else if((drawObject instanceof Cesium.Entity && drawObject._polygon) || drawObject.polygon instanceof Cesium.PolygonGraphics)
 			{
 				var polygon = result.object.polygon;
 				var point2Ds = [];
@@ -350,6 +352,8 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 				if(polygon.hierarchy)
 				{
 					var hierarchy = polygon.hierarchy.getValue();
+					if(hierarchy.length==undefined)
+						hierarchy = hierarchy.positions;
 					
 					for(var i=0; i<hierarchy.length; i++)
 					{
@@ -377,13 +381,19 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 				
 				$('#iconAttributeTable').click();
 				
-				var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
-				layerBldgVec.releaseSelection();
-				var selectedIDs = [];
-				for(var i=0; i<features.length; i++)
-					selectedIDs.push(Number(features[i].data["SMID"]));
-					
-				layerBldgVec.setSelection(selectedIDs);
+				if(features.length>0)
+				{
+					if(features[0].attributes.BUILDINGID!=undefined)		// Very serious hard code here
+					{
+						var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
+						layerBldgVec.releaseSelection();
+						var selectedIDs = [];
+						for(var i=0; i<features.length; i++)
+							selectedIDs.push(Number(features[i].data["SMID"]));
+							
+						layerBldgVec.setSelection(selectedIDs);
+					}
+				}
 				
 				_drawPointHandler.clear();
 				_drawPolylineHandler.clear();
@@ -394,19 +404,55 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 			
 			var processFailed = function(e){console.log('Buffer not successful');}
 			
-			var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
-				datasetNames: ["10.40.106.82_P2_Sample_Data:Bldg_HK80"],		// Using hardcode
-				bufferDistance: Number($('#bfrSize').val()),
-				geometry: region,
-				toIndex:9999
-			});
-			var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
-				eventListeners: {
-					"processCompleted": selectedFeatureProcessCompleted,
-					"processFailed": processFailed
-				}
-			});
-			getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+			if($('#bfrLayer').val()=='Bldg_HK80')
+			{
+				var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
+					datasetNames: ["10.40.106.82_P2_Sample_Data:Bldg_HK80"],		// Using hardcode
+					bufferDistance: Number($('#bfrSize').val()),
+					geometry: region,
+					toIndex:9999
+				});
+				var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
+					eventListeners: {
+						"processCompleted": selectedFeatureProcessCompleted,
+						"processFailed": processFailed
+					}
+				});
+				getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+			}
+			else if($('#bfrLayer').val()=='Lot')
+			{
+				var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
+					datasetNames: ["10.40.106.82_R3DGIS_GISDB:Lot"],		// Using hardcode
+					bufferDistance: Number($('#bfrSize').val()),
+					geometry: region,
+					toIndex:9999
+				});
+				var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
+					eventListeners: {
+						"processCompleted": selectedFeatureProcessCompleted,
+						"processFailed": processFailed
+					}
+				});
+				getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+			}
+			else if($('#bfrLayer').val()=='Application')
+			{
+				var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
+					datasetNames: ["10.40.106.82_R3DGIS_GISDB:APPLICATION"],		// Using hardcode
+					bufferDistance: Number($('#bfrSize').val()),
+					geometry: region,
+					toIndex:9999
+				});
+				var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
+					eventListeners: {
+						"processCompleted": selectedFeatureProcessCompleted,
+						"processFailed": processFailed
+					}
+				});
+				getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
+				
+			}
 			
 			var bufferAnalystCompleted = function(args) {
 				if(args){
@@ -550,21 +596,30 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 			if (Cesium.defined(pickedObject)) {
 				// Highlight selected block
 				var entity = pickedObject.id;
-				id = entity.id;
-				
-				if(threeDGIS.twoDView.mapDiv.css('display')=='block')
+				if(entity==undefined)
 				{
-					id = id.substring(6,id.length);
+					id=undefined;
+					if(threeDGIS.twoDView.mapDiv.css('display')=='block')
+						threeDGIS.twoDView.vectorLayer.removeAllFeatures();
+				}
+				else
+				{
+					id = entity.id;
 					
-					var feature = {
-						ID: Number(id)
-					};
-					
-					var args = {
-						feature: feature
-					};
-					
-					threeDGIS.twoDView.selectedFeature(args);
+					if(threeDGIS.twoDView.mapDiv.css('display')=='block')
+					{
+						id = id.substring(6,id.length);
+						
+						var feature = {
+							ID: Number(id)
+						};
+						
+						var args = {
+							feature: feature
+						};
+						
+						threeDGIS.twoDView.selectedFeature(args);
+					}
 				}
 			}
 			else
@@ -672,6 +727,45 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 			case 'polygon':
 				_drawPolygonHandler.activate();
 				break;
+			case 'object':
+				var pickForBuffer = function(e)
+				{
+					var thisObj = threeDGIS.threeDView;
+					var viewer = thisObj.viewer;
+					var pickedObject = viewer.scene.pick(e.position);
+					
+					if (Cesium.defined(pickedObject)) {
+						// Highlight selected block
+						var entity = pickedObject.id;
+						if(entity==undefined)
+						{
+							id=undefined;
+							if(threeDGIS.twoDView.mapDiv.css('display')=='block')
+								threeDGIS.twoDView.vectorLayer.removeAllFeatures();
+						}
+						else
+						{
+							id = entity.id;
+							
+							threeDGIS.threeDView.addBlockSelection(id);
+							var polygon = entity.polygon;
+							var object = {
+								polygon: polygon
+							};
+							var result = {
+								object: object
+							};
+							
+							threeDGIS.threeDView.computeBuffer(result);
+						}
+						
+						_handler.removeInputAction(pickForBuffer,Cesium.ScreenSpaceEventType.LEFT_CLICK);
+						threeDGIS.threeDView.enableClickSelect();
+					}
+				}
+				
+				_handler.setInputAction(pickForBuffer,Cesium.ScreenSpaceEventType.LEFT_CLICK);
+				break;
 		}
 	}
 	
@@ -751,6 +845,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	_viewshedHandler.setInputAction(function(e){
 		var thisObj = threeDGIS.threeDView;
 		thisObj.viewer.scene.viewFlag = true;
+		thisObj.analysisFlag = false;
 		// pointHandler.deactivate();
 	},Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
 	
@@ -759,7 +854,9 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	
 	// Pick S3M objects event
 	this.viewer.pickEvent.addEventListener(function(feature){
-		if(threeDGIS.threeDView.bufferFlag)
+		if(threeDGIS.threeDView.analysisFlag)
+			;	// Don't do anything about picked feature during anylysis
+		else if(threeDGIS.threeDView.bufferFlag)
 		{
 			var id = feature.SMID;
 			// console.log(feature);	// But how to get to know which layer the feature belongs to?
@@ -820,7 +917,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 				};
 				
 				threeDGIS.threeDView.computeBuffer(result);
-;			}
+			}
 		}
 		else
 		{

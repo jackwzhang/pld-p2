@@ -204,7 +204,7 @@
 							<div id="3DLayers">
 								<ul class="list-group checked-list-box" id="layerList">
 									<li class="list-group-item" data-checked="true">Base_Map</li>
-									<!--<li class="list-group-item" data-checked="true">SPOT_RGB</li>-->
+									<li class="list-group-item" data-checked="true">SPOT_RGB</li>
 									<li class="list-group-item" data-checked="true">OZP_Zone</li>
 									<li class="list-group-item" data-checked="true">Lot_Map</li>
 									<li class="list-group-item" data-checked="true">Terrain</li>
@@ -314,6 +314,7 @@
 		<div id="toolset3D" style="position:absolute; right:10px; bottom:120px; z-index=3000;">
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="2D&nbsp;Map" class="btnToggleMapMode"><i class="fa fa-map fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Fly&nbsp;to&nbsp;location" id="iconFlyTo"><i class="fa fa-plane fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Feature&nbsp;Identification" id="iconIdentify"><i class="fa fa-mouse-pointer fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="3D&nbsp;Measurement" id="icon3DMeasure"><i class="fa fa-arrows-h fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Edit&nbsp;block" id="iconEditBlock"><i class="fa fa-pencil fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Adjust&nbsp;transparency" id="iconTransp"><i class="fa fa-square-o fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
@@ -552,9 +553,44 @@
 						</tr>
 						<tr>
 							<td>Scale:</td>
-							<td><input id="exGLTFScale" data-slider-id='ex1Slider' type="text" data-slider-min="1" data-slider-max="10" data-slider-step="1" data-slider-value="1"/></input></td>
+							<td><input id="exGLTFScale" data-slider-id='ex1Slider' type="text" data-slider-min="1" data-slider-max="5" data-slider-step="0.2" data-slider-value="1"/></input></td>
 						</tr>
 					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<div class="modal fade" id="identifyModal" tabindex="-1" role="dialog" aria-labelledby="dialogModalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<span class="modal-title">Select identified layer</span>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body" id="identifyBody" style="overflow: auto; max-height:600px;">
+					<form>
+						<div>
+							<label class="form-check-label" style="margin:5px;">
+								<input type="checkbox" class="form-check-input" id="checkBldg">
+								bldg_wgs
+							</label>
+							
+							<label class="form-check-label" style="margin:5px;">
+								<input type="checkbox" class="form-check-input" id="checkPodium">
+								podium_wgs
+							</label>
+							
+							<label class="form-check-label" style="margin:5px;">
+								<input type="checkbox" class="form-check-input" id="checkAAM">
+								AAM_Model
+							</label>
+						</div>
+						
+						<button type="button" class="btn" data-dismiss="modal">Close</button>
+					</form>
 				</div>
 			</div>
 		</div>
@@ -600,6 +636,7 @@
 								<select class="form-control col-xs-5" id="bfrLayer" name="bfrLayer">
 									<option value="Bldg_HK80">Building Vector</option>
 									<option value="Lot">Lot</option>
+									<option value="Application">Application</option>
 								</select>
 							</div>
 						</fieldset>
@@ -877,7 +914,7 @@
 						var layerPodiumVec = viewer.scene.layers.find('podium_wgs');
 						var layerAAM = viewer.scene.layers.find('AAM_Model');
 						
-						layerBldgVec.setQueryParameter({
+						/*layerBldgVec.setQueryParameter({
 							url: host+'/iserver/services/data-Phase2_Data/rest/data',
 							dataSourceName: '10.40.106.82_P2_Sample_Data',
 							dataSetName: 'Bldg_HK80',
@@ -896,7 +933,7 @@
 							dataSourceName: '10.40.106.82_P2_Sample_Data',
 							dataSetName: 'AAM_Model',
 							keyWord: 'SmID'
-						});
+						});*/
 					},function(e){
 						if (widget._showRenderLoopErrors) {
 							var title = '??SCP??,???????????url???????';
@@ -1186,6 +1223,7 @@
 			$("#btnViewshed").click(function() {
 				threeDGIS.threeDView.removeAnalysisEntities();
 				var viewer = threeDGIS.viewer3D;
+				threeDGIS.threeDView.analysisFlag = true;
 				
 				if(threeDGIS.threeDView.pointHandler.active) {
 					// threeDGIS.threeDView.pointHandler.deactivate();
@@ -1830,75 +1868,64 @@
 		$('#btnBufferSubmit').click(function() {
 			threeDGIS.threeDView.bufferFlag = true;
 			threeDGIS.threeDView.removeAnalysisEntities();
+			threeDGIS.threeDView.startDrawing($('#bfrType').val());
 			
-			switch($('#bfrType').val()) {
+			/*switch($('#bfrType').val()) {
 				case 'object':
 					;	// Does not seem to have anything to do here...
 					break;
 				default:
 					threeDGIS.threeDView.startDrawing($('#bfrType').val());
+			}*/
+		});
+		
+		$('#iconIdentify').click(function() {
+			$('#identifyModal').modal('show');
+		});
+		
+		$('#checkBldg').change(function() {
+			var layerBldgVec = threeDGIS.threeDView.viewer.scene.layers.find('bldg_wgs');
+			
+			if($(this).prop('checked')){
+				layerBldgVec.setQueryParameter({
+					url: host+'/iserver/services/data-Phase2_Data/rest/data',
+					dataSourceName: '10.40.106.82_P2_Sample_Data',
+					dataSetName: 'Bldg_HK80',
+					keyWord: 'SmID'
+				});
 			}
+			else
+				layerBldgVec.queryParameter = undefined;
+		});
+		
+		$('#checkPodium').change(function() {
+			var layerPodiumVec = threeDGIS.threeDView.viewer.scene.layers.find('podium_wgs');
 			
-			/*var viewer = threeDGIS.threeDView.viewer;
-			var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
-			var layerPodiumVec = viewer.scene.layers.find('podium_wgs');
-			var layerAAM = viewer.scene.layers.find('AAM_Model');
-			
-			var bldgSelect = layerBldgVec.getSelection();
-			var podiumSelect = layerPodiumVec.getSelection();
-			var aamSelect = layerAAM.getSelection();
-			
-			var datasetName, selectedID;
-			// May need some loop instead of hard code like this
-			if(bldgSelect.length==1)
-			{
-				datasetName = 'Bldg_HK80';	// Apply the selected id to find the feature polygon and calculate buffer based on this geometry
-				selectedID = bldgSelect[0];
+			if($(this).prop('checked')){
+				layerPodiumVec.setQueryParameter({
+					url: host+'/iserver/services/data-Phase2_Data/rest/data',
+					dataSourceName: '10.40.106.82_P2_Sample_Data',
+					dataSetName: 'Bldg_HK80',
+					keyWord: 'SmID'
+				});
 			}
-			else if(podiumSelect.length==1)
-			{
-				datasetName = 'Podium_HK80';
-				selectedID = podiumSelect[0];
-			}
-			else if(aamSelect.length==1)
-			{
-				datasetName = 'AAM_Model';
-				selectedID = aamSelect[0];
-			}
-			else	// If not selected any feature, user draw a polygon manually
-				handlerPolygon.activate();
-				
-			var getFeatureParam, getFeatureBySQLService, getFeatureBySQLParams;
-			//alert("APP_CASE_NO LIKE '"+attributeValue+"%' OR LOCAT_ADDR LIKE '%"+attributeValue+"%'");
-
-			getFeatureParam = new SuperMap.REST.FilterParameter({
-				name: datasetName+'@10.40.106.82_P2_Sample_Data',
-				//attributeFilter: "APP_CASE_NO='"+attributeValue+"'"
-				attributeFilter: 'SMID='+selectedID
-			});
+			else
+				layerPodiumVec.queryParameter = undefined;
+		});
+		
+		$('#checkAAM').change(function() {
+			var layerAAM = threeDGIS.threeDView.viewer.scene.layers.find('AAM_Model');
 			
-			getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
-				queryParameter: getFeatureParam,
-				datasetNames:["10.40.106.82_P2_Sample_Data:"+datasetName],		// Hardcode
-				toIndex: 999999
-			});
-			getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(dataUrl, {
-				eventListeners: {"processCompleted": QueryCompleted, "processFailed": undefined}
-			});
-
-			getFeatureBySQLService.processAsync(getFeatureBySQLParams);
-			
-			function QueryCompleted(e) {
-				var geometry = e.result.features[0].geometry;
-				var object = {
-					polygon: geometry
-				};
-				var result = {
-					object: object
-				};
-				
-				threeDGIS.threeDView.computeBuffer(result);
-;			}*/
+			if($(this).prop('checked')){
+				layerAAM.setQueryParameter({
+					url: host+'/iserver/services/data-Phase2_Data/rest/data',
+					dataSourceName: '10.40.106.82_P2_Sample_Data',
+					dataSetName: 'AAM_Model',
+					keyWord: 'SmID'
+				});
+			}
+			else
+				layerAAM.queryParameter = undefined;
 		});
 	</script>
 	

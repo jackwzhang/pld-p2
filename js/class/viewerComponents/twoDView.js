@@ -75,7 +75,6 @@ function TwoDView(map, mapDiv, toolDiv)
 			
 			thisObj.map.addLayers(layers);
 			
-			
 			// If these are the first layers added, change center
 			if(thisObj.map.layers.length==layers.length)
 			{
@@ -83,6 +82,8 @@ function TwoDView(map, mapDiv, toolDiv)
 				thisObj.map.zoomToScale(5000);
 				thisObj.ctrlDrawPoint.events.on({"featureadded": threeDGIS.twoDView.selectedFeature});
 				thisObj.ctrlDrawPoint.activate();
+				
+				// Base Layer pan event for 2/3D sync
 			}
 			thisObj.map.allOverlays = true;
 			thisObj.map.raiseLayer(thisObj.map.getLayersByName('Vector Layer')[0],1);
