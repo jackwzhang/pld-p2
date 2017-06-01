@@ -186,7 +186,9 @@
 	  <!-- Begin page content -->
 		<div id="viewContainer" style="position:relative; top:0px; left:50px; height:100%; z-index:0;">
 			<!-- Debug with cesiumContainer2 -->
-			<div id="cesiumContainer"></div>
+			<div id="cesiumContainer">
+				<!-- <div id="slider"></div> -->	<!-- Split screen with slider, leave this blank by now -->
+			</div>
 			<div id="SMapContainer"></div>
 			<div id="streetViewContainer"></div>
 		</div>
@@ -204,7 +206,7 @@
 							<div id="3DLayers">
 								<ul class="list-group checked-list-box" id="layerList">
 									<li class="list-group-item" data-checked="true">Base_Map</li>
-									<li class="list-group-item" data-checked="true">SPOT_RGB</li>
+									<!-- <li class="list-group-item" data-checked="true">SPOT_RGB</li> -->
 									<li class="list-group-item" data-checked="true">OZP_Zone</li>
 									<li class="list-group-item" data-checked="true">Lot_Map</li>
 									<li class="list-group-item" data-checked="true">Terrain</li>
@@ -314,9 +316,10 @@
 		<div id="toolset3D" style="position:absolute; right:10px; bottom:120px; z-index=3000;">
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="2D&nbsp;Map" class="btnToggleMapMode"><i class="fa fa-map fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Fly&nbsp;to&nbsp;location" id="iconFlyTo"><i class="fa fa-plane fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
-			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Feature&nbsp;Identification" id="iconIdentify"><i class="fa fa-mouse-pointer fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Settings" id="iconSettings"><i class="fa fa-cog fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="3D&nbsp;Measurement" id="icon3DMeasure"><i class="fa fa-arrows-h fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Edit&nbsp;block" id="iconEditBlock"><i class="fa fa-pencil fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Split&nbsp;screen" id="iconSplitScreen"><i class="fa fa-window-restore fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Adjust&nbsp;transparency" id="iconTransp"><i class="fa fa-square-o fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<!-- <li><a href="#" data-toggle="tooltip" data-placement="left" title="Fly&nbsp;management"><i class="fa fa-plane fa-2x toolsetItem" aria-hidden="true"></i></a></li>
 			<li><a href="#" data-toggle="tooltip" data-placement="left" title="Identification"><i class="fa fa-eye fa-2x toolsetItem" aria-hidden="true"></i></a></li>
@@ -561,18 +564,19 @@
 		</div>
 	</div>
 	
-	<div class="modal fade" id="identifyModal" tabindex="-1" role="dialog" aria-labelledby="dialogModalLabel" aria-hidden="true">
+	<div class="modal fade" id="settingModal" tabindex="-1" role="dialog" aria-labelledby="dialogModalLabel" aria-hidden="true">
 		<div class="modal-dialog" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
-					<span class="modal-title">Select identified layer</span>
+					<span class="modal-title">Scene settings</span>
 					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
 						<span aria-hidden="true">&times;</span>
 					</button>
 				</div>
 				<div class="modal-body" id="identifyBody" style="overflow: auto; max-height:600px;">
 					<form>
-						<div>
+						<div class="form-group">
+							<label>Identify layers:</label>
 							<label class="form-check-label" style="margin:5px;">
 								<input type="checkbox" class="form-check-input" id="checkBldg">
 								bldg_wgs
@@ -587,6 +591,28 @@
 								<input type="checkbox" class="form-check-input" id="checkAAM">
 								AAM_Model
 							</label>
+						</div>
+						
+						<div class="form-group">
+							<label>Scene FOV</label>
+							<select class="form-control col-xs-5" id="selectFOV" name="bfrSize">
+								<option value="-1"> </option>
+								<option value="30">30</option>
+								<option value="50">50</option>
+								<option value="80">80</option>
+								<option value="100">100</option>
+							</select>
+						</div>
+						
+						<div class="form-group">
+							<label>Split Screen Mode</label>
+							<select class="form-control col-xs-5" id="selectSplit" name="bfrSize">
+								<option value="0">None</option>
+								<option value="1">Horizontal</option>
+								<option value="2">Vertical</option>
+								<option value="4">Triple</option>
+								<option value="3">Quad</option>
+							</select>
 						</div>
 						
 						<button type="button" class="btn" data-dismiss="modal">Close</button>
@@ -688,7 +714,7 @@
 		var handlerPolygon, computeBuffer;
 		
 		// Hard code on terrain URL for profile analysis
-		var profileUrl = host+ '/iserver/services/spatialAnalysis-Phase2_Data/restjsr/spatialanalyst/datasets/HK_DTM_1@10.40.106.82_P2_Sample_Data/terraincalculation/profile.jsonp?returnContent=true';
+		var profileUrl = host+ '/iserver/services/spatialAnalysis-Phase2_Data/restjsr/spatialanalyst/datasets/HK_DTM_80@10.40.106.82_P2_Sample_Data/terraincalculation/profile.jsonp?returnContent=true';
 		
 		function onload(Cesium) {
 			// Class initiation
@@ -914,6 +940,11 @@
 						var layerPodiumVec = viewer.scene.layers.find('podium_wgs');
 						var layerAAM = viewer.scene.layers.find('AAM_Model');
 						
+						layerBldgVec._bReleaseColor = false;
+						layerPodiumVec._bReleaseColor = false;
+						layerBldgVec.refresh();
+						layerPodiumVec.refresh();
+						
 						/*layerBldgVec.setQueryParameter({
 							url: host+'/iserver/services/data-Phase2_Data/rest/data',
 							dataSourceName: '10.40.106.82_P2_Sample_Data',
@@ -1131,7 +1162,12 @@
 					{
 						var layerToTrigger = viewer.scene.layers.find(layerName);
 						if(layerToTrigger)
-							layerToTrigger.visible = isChecked;
+						{
+							if(threeDGIS.mode.length==1)
+								layerToTrigger.visible = isChecked;
+							else if(threeDGIS.mode[0]=='3D' || threeDGIS.mode[1]=='3D')
+								layerToTrigger.setVisibleInViewport(0, isChecked);
+						}
 					}
 					
 					var mode = threeDGIS.mode[0];
@@ -1806,8 +1842,8 @@
 			
 			if(threeDGIS.mode[0]=="3D" && threeDGIS.mode.length==1)
 			{
-				$('#cesiumContainer').width($('#cesiumContainer').width()*3);
-				$('#cesiumContainer').height($('#cesiumContainer').height()*3);
+				// $('#cesiumContainer').width($('#cesiumContainer').width()*3);
+				// $('#cesiumContainer').height($('#cesiumContainer').height()*3);
 				
 				var scene = threeDGIS.threeDView.viewer.scene;
 				scene.layers.find('AAM_Model').lodRangeScale = 0.05;
@@ -1826,8 +1862,8 @@
 						saveAs(blob, "screenshot.png");
 						$('#txtSystemInfo').val('Screen captured successfully.');
 						
-						$('#cesiumContainer').width($('#cesiumContainer').width()/3);
-						$('#cesiumContainer').height($('#cesiumContainer').height()/3);
+						// $('#cesiumContainer').width($('#cesiumContainer').width()/3);
+						// $('#cesiumContainer').height($('#cesiumContainer').height()/3);
 						
 						resizeElement();
 						
@@ -1839,7 +1875,7 @@
 							scene.layers.find('SaiKung').lodRangeScale = 0.4;
 						},300);
 					}, "image/png");
-				}, 20000);	// 5 sec does not seem to be enough, but not yet found any event or promise indicating that refresh is done
+				}, 12000);	// 5 sec does not seem to be enough, but not yet found any event or promise indicating that refresh is done
 			}
 			else if(threeDGIS.mode[0]=="2D" && threeDGIS.mode.length==1)
 			{
@@ -1879,8 +1915,8 @@
 			}*/
 		});
 		
-		$('#iconIdentify').click(function() {
-			$('#identifyModal').modal('show');
+		$('#iconSettings').click(function() {
+			$('#settingModal').modal('show');
 		});
 		
 		$('#checkBldg').change(function() {
@@ -2617,267 +2653,19 @@
 			});
 		});
 		
-		// Deprecated
-		function featureQueryCompleted(getFeaturesEventArgs)
-		{
-			var viewer = threeDGIS.threeDView.viewer;
-			
-			var i, len, features, feature, result = getFeaturesEventArgs.result;
-			
-			if(!(result && result.features)) {
-				$('#attributeTable').bootstrapTable('refreshOptions',{
-					columns:[],
-					filter:true,
-					exportDataType: 'all'
-				});
-				
-				$('#attributeTable').bootstrapTable('removeAll');
-				$('#iconAttributeTable').click();
+		$('#iconSplitScreen').click(function() {
+			var scene = threeDGIS.threeDView.viewer.scene;
+			if(scene.multiViewportMode == Cesium.MultiViewportMode.NONE)
+			{
+				scene.multiViewportMode = Cesium.MultiViewportMode.HORIZONTAL;
+				threeDGIS.mode = ['3D','3D'];
 			}
-			else {
-				if(result.features.length==0)
-				{
-					$('#attributeTable').bootstrapTable('refreshOptions',{
-						columns:[]
-					});
-					
-					$('#attributeTable').bootstrapTable('removeAll');
-					$('#attributeTable').bootstrapTable( 'resetView' , {height: 149} );
-					$('#iconAttributeTable').click();
-					
-					return;
-				}
-			
-				// selection3D.removeAll();
-				features = result.features;
-				
-				var columns = [];
-				var tableObjs = [];
-				var $table = $('#attributeTable');
-				
-				if(features[0].attributes.APP_CASE_NO==undefined)	// Hard code to determine whether it is building or application
-				{
-					columns.push({
-						checkbox: true
-					});
-				}
-				
-				for(var i=0; i<features.length; i++)
-				{
-					var row = {};
-					var e, n, w, s;
-					for (var property in features[i].attributes) {
-						if(property.toUpperCase().substr(0,2) != 'SM' || property.toUpperCase()=='SMID')
-						{
-							if(i==0)
-							{
-								columns.push({
-									field: property,                   
-									title: property,
-									sortable: true,
-									filter: {
-										type: "input"
-									}
-								});
-							}
-							
-							row[property] = features[i].attributes[property];
-						}
-						else if(property.toUpperCase()=='SMSDRIE')
-							e = Number(features[i].attributes[property]);
-						else if(property.toUpperCase()=='SMSDRIN')
-							n = Number(features[i].attributes[property]);
-						else if(property.toUpperCase()=='SMSDRIW')
-							w = Number(features[i].attributes[property]);
-						else if(property.toUpperCase()=='SMSDRIS')
-							s = Number(features[i].attributes[property]);
-					}
-					var lngStr = (e+w)/2, latStr = (n+s)/2;
-					row['Coordinate'] = '('+lngStr.toFixed(7)+', '+latStr.toFixed(7)+')';
-					tableObjs.push(row);
-				}
-				columns.push({
-					field: 'Coordinate',                   
-					title: 'Coordinate',
-					sortable: true,
-					filter: {
-						type: "input"
-					}
-				});
-				$('#attributeTable').bootstrapTable('refreshOptions',{
-					columns:columns,
-					filter:true,
-					exportDataType: 'all'
-				});
-				
-				$('#attributeTable').bootstrapTable('removeAll');
-				$('#attributeTable').bootstrapTable( 'resetView' , {height: 400} );
-				$('#attributeTable').bootstrapTable('append', tableObjs);
-				$('#attributeTable').on('check.bs.table',function(e, row, element) {
-					var viewer = threeDGIS.threeDView.viewer;
-					var selectionList = viewer.scene.layers.find('bldg_wgs').getSelection();
-					selectionList.push(row.SMID);
-					viewer.scene.layers.find('bldg_wgs').setSelection(selectionList);
-					
-					
-				});
-				$('#attributeTable').on('uncheck.bs.table',function(e, row, element) {
-					var viewer = threeDGIS.threeDView.viewer;
-					var selectionList = viewer.scene.layers.find('bldg_wgs').getSelection();
-					viewer.scene.layers.find('bldg_wgs').releaseSelection();
-					var newSelection = [];
-					for(var i=0; i<selectionList.length; i++)
-					{
-						if(selectionList[i]==row.SMID)
-							continue;
-						else
-							newSelection.push(selectionList[i]);
-					}
-					console.log(selectionList);
-					console.log(newSelection);
-					
-					viewer.scene.layers.find('bldg_wgs').setSelection(newSelection);
-				});
-				$('#attributeTable').on('check-all.bs.table',function(e, rows) {
-					var viewer = threeDGIS.threeDView.viewer;
-					viewer.scene.layers.find('bldg_wgs').releaseSelection();
-					var selections = [];
-					for(var i=0; i<rows.length; i++)
-						selections.push(rows[i].SMID);
-					viewer.scene.layers.find('bldg_wgs').setSelection(selections);
-				});
-				$('#attributeTable').on('uncheck-all.bs.table',function(e, rows) {
-					var viewer = threeDGIS.threeDView.viewer;
-					viewer.scene.layers.find('bldg_wgs').releaseSelection();
-				});
-				$('#attributeTable').on('dbl-click-cell.bs.table',function(e, field, value, row) {
-					if(threeDGIS.threeDView.viewMode!='Bird-eye')
-						return;		// Don't fly under human view mode
-
-					if(row.APP_CASE_NO!=undefined)
-					{
-						function flyToCase(getFeaturesEventArgs)
-						{						
-							var features = getFeaturesEventArgs.result.features;
-							var geometry = features[0].geometry;
-							var vertices = geometry.getVertices();
-							var viewer = threeDGIS.threeDView.viewer;
-							
-							if(viewer.entities.getById('APP_HIGHLIGHT')!=undefined)
-							{
-								viewer.entities.removeById('APP_HIGHLIGHT');
-								threeDGIS.threeDView.removeAllLabels();
-							}
-							
-							var cesiumVertices = [];
-							var cartos = []
-							for(var i=0; i<vertices.length; i++)
-							{
-								var lng = vertices[i].x;
-								var lat = vertices[i].y;
-								var carto = new Cesium.Cartographic(lng*Math.PI/180, lat*Math.PI/180);
-								cartos.push(carto);
-								var h = viewer.scene.globe.getHeight(carto);
-								cesiumVertices.push(Cesium.Cartesian3.fromDegrees(lng, lat, h));
-							}
-							Cesium.sampleTerrain(viewer.terrainProvider, 17, cartos)
-								.then(function(samples) {
-									var baseHeight = 999;
-									var maxHeight = -99;
-									
-									for(var i=0; i<samples.length; i++)
-									{									
-										if(samples[i].height<baseHeight)
-											baseHeight = samples[i].height;
-										if(samples[i].height>maxHeight)
-											maxHeight = samples[i].height;
-									}
-									
-									var polygon = new Cesium.PolygonGraphics({
-										hierarchy: new Cesium.PolygonHierarchy(cesiumVertices),
-										extrudedHeight: maxHeight+10,
-										height: baseHeight,
-										material: new Cesium.Color(1.0, 0.2, 0.6, 0.7),
-										outline: true,
-										outlineColor : Cesium.Color.BLACK,
-										outlineWidth : 10	// Does not seem to make any difference
-									});
-									
-									viewer.entities.add({
-										id: 'APP_HIGHLIGHT',
-										polygon: polygon,
-										outline: true,
-										shadows: Cesium.ShadowMode.ENABLED		// Does not seem to be working
-									});
-								});
-							
-							var coordinate = row.Coordinate;
-							var coordTemp = coordinate.substring(1,coordinate.length-1);
-							var lnglat = coordTemp.split(', ');
-							threeDGIS.threeDView.addLabel(row.APP_CASE_NO,Number(lnglat[0]),Number(lnglat[1]));
-						}
-						
-						var layerToSearch = 'APPLICATION_WGS84';
-						var db = '10.40.106.82_R3DGIS_GISDB';
-						var selectColumn = 'APP_CASE_NO';
-						
-						getFeatureParam = new SuperMap.REST.FilterParameter({
-							name: layerToSearch+'@'+db,
-							//attributeFilter: "APP_CASE_NO='"+attributeValue+"'"
-							attributeFilter: selectColumn + " = '" + row.APP_CASE_NO + "'",
-							orderBy: selectColumn
-						});
-						
-						getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
-							queryParameter: getFeatureParam,
-							datasetNames:[db+":"+layerToSearch]
-						});
-						getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(dataUrl, {
-							eventListeners: {"processCompleted": flyToCase, "processFailed": processFailed}
-						});
-
-						getFeatureBySQLService.processAsync(getFeatureBySQLParams);
-					}
-					else
-					{
-						var rowID = row.SMID;
-						$("#attributeTable").bootstrapTable("uncheckAll");
-						$("#attributeTable").bootstrapTable("checkBy", {field:"SMID", values:[rowID]});
-					}
-					
-					var coordinate = row.Coordinate;
-					
-					var coordTemp = coordinate.substring(1,coordinate.length-1);
-					var lnglat = coordTemp.split(', ');
-					var carto = new Cesium.Cartographic(Number(lnglat[0])*Math.PI/180,Number(lnglat[1])*Math.PI/180);
-					carto.height = threeDGIS.threeDView.viewer.scene.globe.getHeight(carto);
-					
-					threeDGIS.threeDView.viewer.scene.camera.flyTo({
-						destination: Cesium.Cartesian3.fromDegrees(Number(lnglat[0]),Number(lnglat[1]),carto.height+400),
-						orientation: {
-							heading: 0,
-							pitch: -Math.PI/2,
-							roll: 0
-						},
-						duration: 2
-					})
-				});
-				$('#iconAttributeTable').click();
-				
-				var selectionIDs = [];
-				viewer.scene.layers.find('bldg_wgs').releaseSelection();
-				for(var i=0; i<features.length; i++)
-				{
-					var feature = features[i];
-					var id = feature.data.SMID;
-					selectionIDs.push(id);
-					
-					var geometry = feature.geometry;
-					var center = geometry.getCentroid();
-				}
-				// viewer.scene.layers.find('bldg_wgs').setSelection(selectionIDs);
-			}	
-		}
+			else
+			{
+				scene.multiViewportMode = Cesium.MultiViewportMode.NONE;
+				threeDGIS.mode = ['3D'];
+			}
+		});
 	</script>
 	
 	<!-- Attribute table -->
@@ -3069,8 +2857,14 @@
 				var line = CesiumToSuperMap.convertPolyline(Cesium,SuperMap,resultObject);
 				// var profileUrl = 'http://pld-3dappdev.pland.hksarg/iserver/services/spatialAnalysis-PlanD_Phase1/restjsr/spatialanalyst/datasets/DTM_2@data/terraincalculation/profile.jsonp?returnContent=true';
 				var points = [];
-				points.push(new SuperMap.Geometry.Point(line.getVertices()[0].x, line.getVertices()[0].y));
-				points.push(new SuperMap.Geometry.Point(line.getVertices()[1].x, line.getVertices()[1].y));
+				
+				for(var i=0; i<=1; i++)
+				{
+					var hkpt = CoordTransform.wgs2hk(line.getVertices()[i].x, line.getVertices()[i].y);
+					points.push(new SuperMap.Geometry.Point(hkpt[0], hkpt[1]));
+				}
+				// points.push(new SuperMap.Geometry.Point(line.getVertices()[0].x, line.getVertices()[0].y));
+				// points.push(new SuperMap.Geometry.Point(line.getVertices()[1].x, line.getVertices()[1].y));
 				var serverGeometry = new SuperMap.REST.ServerGeometry({
 					id : 0,//???number??
 					style : null,
