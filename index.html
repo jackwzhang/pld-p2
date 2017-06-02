@@ -206,7 +206,7 @@
 							<div id="3DLayers">
 								<ul class="list-group checked-list-box" id="layerList">
 									<li class="list-group-item" data-checked="true">Base_Map</li>
-									<!-- <li class="list-group-item" data-checked="true">SPOT_RGB</li> -->
+									<li class="list-group-item" data-checked="true">SPOT_RGB</li>
 									<li class="list-group-item" data-checked="true">OZP_Zone</li>
 									<li class="list-group-item" data-checked="true">Lot_Map</li>
 									<li class="list-group-item" data-checked="true">Terrain</li>
@@ -319,7 +319,7 @@
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Settings" id="iconSettings"><i class="fa fa-cog fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="3D&nbsp;Measurement" id="icon3DMeasure"><i class="fa fa-arrows-h fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Edit&nbsp;block" id="iconEditBlock"><i class="fa fa-pencil fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
-			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Split&nbsp;screen" id="iconSplitScreen"><i class="fa fa-window-restore fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<!-- <div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Split&nbsp;screen" id="iconSplitScreen"><i class="fa fa-window-restore fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div> -->
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Adjust&nbsp;transparency" id="iconTransp"><i class="fa fa-square-o fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<!-- <li><a href="#" data-toggle="tooltip" data-placement="left" title="Fly&nbsp;management"><i class="fa fa-plane fa-2x toolsetItem" aria-hidden="true"></i></a></li>
 			<li><a href="#" data-toggle="tooltip" data-placement="left" title="Identification"><i class="fa fa-eye fa-2x toolsetItem" aria-hidden="true"></i></a></li>
@@ -327,6 +327,7 @@
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Profile&nbsp;analysis" id="btnProfile"><i class="fa fa-area-chart fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Skyline&nbsp;analysis" id="btnSkyline"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Viewshed&nbsp;analysis" id="btnViewshed"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Slghtline&nbsp;analysis" id="btnSightline"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Clear&nbsp;analysis" id="btnClearAll" onclick="threeDGIS.threeDView.removeAnalysisEntities();"><i class="fa fa-trash fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Walk&nbsp;mode" id="btnWalkmode"><span class="glyphicon glyphicon-road toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
 			<div class="rightToolContainer" style="display:none;"><a href="#" data-toggle="tooltip" data-placement="left" title="Street&nbsp;view" id="btnStreetView"><i class="fa fa-street-view fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
@@ -373,6 +374,7 @@
 							   data-page-size="10"
 							   data-page-list="[10,50,100]"
 							   data-show-export="true"
+							   data-striped="true"
 							   data-pagination-first-text="First"
 							   data-pagination-pre-text="Previous"
 							   data-pagination-next-text="Next"
@@ -552,7 +554,8 @@
 					<table class="table">
 						<tr>
 							<td style="width:300px;">Rotation:</td>
-							<td><input id="exGLTFRotation" data-slider-id='ex1Slider' type="text" data-slider-min="0" data-slider-max="359" data-slider-step="5" data-slider-value="0"/></td>
+							<td style="width:300px;"><input id="exGLTFRotation" data-slider-id='ex1Slider' type="text" data-slider-min="0" data-slider-max="359" data-slider-step="5" data-slider-value="0"/></td>
+							<td><input style="width:50px;" id="exGLTFRotationValue" value="0" type="text"/></td>
 						</tr>
 						<tr>
 							<td>Scale:</td>
@@ -593,26 +596,30 @@
 							</label>
 						</div>
 						
-						<div class="form-group">
-							<label>Scene FOV</label>
-							<select class="form-control col-xs-5" id="selectFOV" name="bfrSize">
-								<option value="-1"> </option>
-								<option value="30">30</option>
-								<option value="50">50</option>
-								<option value="80">80</option>
-								<option value="100">100</option>
-							</select>
+						<div class="form-group row">
+							<label for="selectFOV" class="col-sm-3 col-form-label">Scene FOV</label>
+							<div class="col-sm-9">
+								<select class="form-control col-xs-2" id="selectFOV" name="fov">
+									<option value="-1"> </option>
+									<option value="30">30</option>
+									<option value="50">50</option>
+									<option value="80">80</option>
+									<option value="100">100</option>
+								</select>
+							</div>
 						</div>
 						
-						<div class="form-group">
-							<label>Split Screen Mode</label>
-							<select class="form-control col-xs-5" id="selectSplit" name="bfrSize">
-								<option value="0">None</option>
-								<option value="1">Horizontal</option>
-								<option value="2">Vertical</option>
-								<option value="4">Triple</option>
-								<option value="3">Quad</option>
-							</select>
+						<div class="form-group row">
+							<label for="selectSplit" class="col-sm-3 col-form-label">Split Screen</label>
+							<div class="col-sm-9">
+								<select class="form-control col-xs-2" id="selectSplit" name="split">
+									<option value="0">None</option>
+									<option value="1">Horizontal</option>
+									<option value="2">Vertical</option>
+									<option value="4">Triple</option>
+									<option value="3">Quad</option>
+								</select>
+							</div>
 						</div>
 						
 						<button type="button" class="btn" data-dismiss="modal">Close</button>
@@ -1489,6 +1496,22 @@
 					entity.position.getValue(new Cesium.JulianDate()), 
 					new Cesium.HeadingPitchRoll(val.newValue*Math.PI/180, 0, 0)
 				);
+				$('#exGLTFRotationValue').val(val.newValue);
+			});
+			
+			$('#exGLTFRotationValue').keyup(function() {
+				try
+				{
+					gltfRotationSlider.bootstrapSlider('setValue',$(this).val());
+					var viewer = threeDGIS.threeDView.viewer;
+					var entity = viewer.entities.getById('model_gltf');
+					
+					entity.orientation = Cesium.Transforms.headingPitchRollQuaternion(
+						entity.position.getValue(new Cesium.JulianDate()), 
+						new Cesium.HeadingPitchRoll($(this).val()*Math.PI/180, 0, 0)
+					);
+				}
+				catch(e){;}
 			});
 			
 			var gltfScaleSlider = $('#exGLTFScale').bootstrapSlider();
@@ -1963,6 +1986,37 @@
 			else
 				layerAAM.queryParameter = undefined;
 		});
+		
+		$('#selectFOV').on('mouseup', function(){
+			var open = $('#selectFOV').data("isopen");
+			if($('#selectFOV').data("isopen"))
+			{
+				var id = $('#selectFOV option:selected').val();
+				
+				threeDGIS.threeDView.viewer.camera.frustum.fov = id*Math.PI/180;
+			}
+			$('#selectFOV').data("isopen", !open);
+		});
+		
+		$('#selectSplit').on('mouseup', function(){
+			var open = $('#selectSplit').data("isopen");
+			if($('#selectSplit').data("isopen"))
+			{
+				var id = $('#selectSplit option:selected').val();
+				
+				var scene = threeDGIS.threeDView.viewer.scene;
+				scene.multiViewportMode = Number(id);
+				if(scene.multiViewportMode != Cesium.MultiViewportMode.NONE)
+				{
+					threeDGIS.mode = ['3D','3D'];
+				}
+				else
+				{
+					threeDGIS.mode = ['3D'];
+				}
+			}
+			$('#selectSplit').data("isopen", !open);
+		});
 	</script>
 	
 	<!-- Bookmark manager -->
@@ -2234,7 +2288,9 @@
 					if(data.length==0)
 					{
 						$('#attributeTable').bootstrapTable('refreshOptions',{
-							columns:[]
+							columns:[],
+							pagination: false,
+							showHeader: true
 						});
 						
 						$('#attributeTable').bootstrapTable('removeAll');
@@ -2310,7 +2366,9 @@
 						$('#attributeTable').bootstrapTable('refreshOptions',{
 							columns:columns,
 							filter:true,
-							exportDataType: 'all'
+							exportDataType: 'all',
+							pagination: true,
+							showHeader: true
 						});
 						
 						$('#attributeTable').bootstrapTable('removeAll');
@@ -2405,10 +2463,17 @@
 							getFeatureBySQLService.processAsync(getFeatureBySQLParams);
 							*/
 							
-							if(viewer.entities.getById('locationResult')!=undefined)
+							/*if(viewer.entities.getById('locationResult')!=undefined)
 							{
 								viewer.entities.removeById('locationResult');
 								threeDGIS.threeDView.removeAllLabels();
+							}*/
+							
+							var viewer = threeDGIS.threeDView.viewer;
+							for(var i=0; i<viewer.entities.values.length; i++)
+							{
+								viewer.entities.values[i].id.substring(0,14)=='locationResult'
+								viewer.entities.remove(viewer.entities.values[i]);
 							}
 							
 							var coordinate = row.Coordinate;
@@ -2507,64 +2572,74 @@
 													},
 													id: 'locationResult'
 												});
+												
+												threeDGIS.threeDView.viewer.flyTo(entity);
 											});
-											
-											threeDGIS.threeDView.viewer.flyTo(entity);
 									}
 									else if(geometry instanceof SuperMap.Geometry.Polygon || geometry instanceof SuperMap.Geometry.MultiPolygon)
 									{
 										console.log('polygon');
 										console.log(geometry);
-										var verticesHK = geometry.getVertices();
-										var cartos = [];
-										for(var i=0; i<verticesHK.length; i++)
+										
+										// Change to: 
+										// geometry.components[i].getVertices()
+										// to support multipolygon
+										var components = geometry.components;
+										
+										for(var j=0; j<components.length; j++)
 										{
-											var x = verticesHK[i].x;
-											var y = verticesHK[i].y;
+											var verticesHK = components[j].getVertices();
+											var cartos = [];
+											for(var i=0; i<verticesHK.length; i++)
+											{
+												var x = verticesHK[i].x;
+												var y = verticesHK[i].y;
+												
+												var wgspt = CoordTransform.hk2wgs(x, y);
+												cartos.push(new Cesium.Cartographic(wgspt[0]*Math.PI/180,wgspt[1]*Math.PI/180));
+											}
 											
-											var wgspt = CoordTransform.hk2wgs(x, y);
-											cartos.push(new Cesium.Cartographic(wgspt[0]*Math.PI/180,wgspt[1]*Math.PI/180));
+											var centroidHK = geometry.getCentroid();
+											var centroidWGS = CoordTransform.hk2wgs(centroidHK.x, centroidHK.y);
+											
+											Cesium.sampleTerrain(threeDGIS.threeDView.viewer.terrainProvider, 17, cartos)
+												.then(function(samples) {
+													console.log('new component');
+													var baseHeight = 9999, topHeight = -9999;
+													var degs = [];
+													for(var i=0; i<samples.length; i++)
+													{
+														var height = samples[i].height;
+														if(baseHeight>height)
+															baseHeight = height;
+															
+														if(topHeight<height)
+															topHeight = height;
+															
+														degs.push(samples[i].longitude*180/Math.PI);
+														degs.push(samples[i].latitude*180/Math.PI);
+													}
+													
+													var polygon = new Cesium.PolygonGraphics({
+														hierarchy: new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(degs)),
+														extrudedHeight: topHeight+10,
+														height: baseHeight,
+														material: new Cesium.Color(1.0, 0.2, 0.6, 0.7),
+														outline: true,
+														outlineColor : Cesium.Color.BLACK,
+														outlineWidth : 10,	// Does not seem to make any difference
+														shadows: Cesium.ShadowMode.RECEIVE_ONLY
+													});
+													
+													var entity = viewer.entities.add({
+														id: 'locationResult'+Date.now(),
+														polygon: polygon,
+														outline: true,
+														shadows: Cesium.ShadowMode.RECEIVE_ONLY
+													});
+													threeDGIS.threeDView.viewer.flyTo(entity);
+												});
 										}
-										
-										var centroidHK = geometry.getCentroid();
-										var centroidWGS = CoordTransform.hk2wgs(centroidHK.x, centroidHK.y);
-										
-										Cesium.sampleTerrain(threeDGIS.threeDView.viewer.terrainProvider, 17, cartos)
-											.then(function(samples) {
-												var baseHeight = 9999, topHeight = -9999;
-												var degs = [];
-												for(var i=0; i<samples.length; i++)
-												{
-													var height = samples[i].height;
-													if(baseHeight>height)
-														baseHeight = height;
-														
-													if(topHeight<height)
-														topHeight = height;
-														
-													degs.push(samples[i].longitude*180/Math.PI);
-													degs.push(samples[i].latitude*180/Math.PI);
-												}
-												
-												var polygon = new Cesium.PolygonGraphics({
-													hierarchy: new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(degs)),
-													extrudedHeight: topHeight+10,
-													height: baseHeight,
-													material: new Cesium.Color(1.0, 0.2, 0.6, 0.7),
-													outline: true,
-													outlineColor : Cesium.Color.BLACK,
-													outlineWidth : 10,	// Does not seem to make any difference
-													shadows: Cesium.ShadowMode.RECEIVE_ONLY
-												});
-												
-												var entity = viewer.entities.add({
-													id: 'locationResult',
-													polygon: polygon,
-													outline: true,
-													shadows: Cesium.ShadowMode.RECEIVE_ONLY
-												});
-												threeDGIS.threeDView.viewer.flyTo(entity);
-											});
 									}
 									else if(geometry instanceof SuperMap.Geometry.LineString || geometry instanceof SuperMap.Geometry.MultiLineString)	// Polyline
 									{
@@ -2651,20 +2726,6 @@
 					//$('#log').html(err.responseText);
 				}
 			});
-		});
-		
-		$('#iconSplitScreen').click(function() {
-			var scene = threeDGIS.threeDView.viewer.scene;
-			if(scene.multiViewportMode == Cesium.MultiViewportMode.NONE)
-			{
-				scene.multiViewportMode = Cesium.MultiViewportMode.HORIZONTAL;
-				threeDGIS.mode = ['3D','3D'];
-			}
-			else
-			{
-				scene.multiViewportMode = Cesium.MultiViewportMode.NONE;
-				threeDGIS.mode = ['3D'];
-			}
 		});
 	</script>
 	
@@ -3002,6 +3063,10 @@
 			threeDGIS.threeDView.clearSelection();
 			
 			// $('#btnEditConfirm').prop('disabled', false);
+			
+			setTimeout(function() {
+				threeDGIS.sync3Dwith2D(true);
+			},1000);
 		});
 		
 		$('#btnBackTo3D').click(function() {
@@ -3012,6 +3077,10 @@
 			threeDGIS.threeDView.selectBlockFlag = true;
 			$('#btnEditConfirm').prop('disabled', true);
 			threeDGIS.threeDView.enableClickSelect();
+			
+			setTimeout(function() {
+				threeDGIS.sync3Dwith2D(false);
+			},1000);
 		});
 		
 		$('#btnAddBlock').click(function() {

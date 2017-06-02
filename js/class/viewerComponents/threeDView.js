@@ -469,7 +469,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 					
 					var polygon = new Cesium.PolygonGraphics({
 						hierarchy: new Cesium.PolygonHierarchy(wgsVertices),
-						material: new Cesium.Color(1.0, 0.2, 0.6, 0.7),
+						material: new Cesium.Color(0.0, 1.0, 1.0, 0.7),
 						outline: true,
 						outlineColor : Cesium.Color.BLACK,
 					});
@@ -553,6 +553,21 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 						polygon.extrudedHeight = baseHeight + threeDGIS.temp;
 					});
 			}
+		}
+	}
+	
+	// Enable sync to 2D
+	// Collision with 2D->3D sync, consider this before enabling this function
+	ThreeDView.prototype.syncWith2D = function(isActivated) {
+		if(isActivated)
+		{
+			_handler.setInputAction(threeDGIS.SceneToMap,Cesium.ScreenSpaceEventType.LEFT_UP);
+			_handler.setInputAction(threeDGIS.SceneToMap,Cesium.ScreenSpaceEventType.WHEEL);
+		}
+		else
+		{
+			_handler.removeInputAction(threeDGIS.SceneToMap,Cesium.ScreenSpaceEventType.LEFT_UP);
+			_handler.removeInputAction(threeDGIS.SceneToMap,Cesium.ScreenSpaceEventType.WHEEL);
 		}
 	}
 	
@@ -922,7 +937,17 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		else
 		{
 			var columns = [];
-			var tableObj = {};
+			
+			columns.push({
+				field: 'C1',
+				title: 'C1',
+			});
+			columns.push({
+				field: 'C2',
+				title: 'C2',
+			});
+			
+			/*var tableObj = {};
 			for (var property in feature) {
 				if(property.toUpperCase().substr(0,2) != 'SM' || property.toUpperCase()=='SMID')
 				{
@@ -935,14 +960,28 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 						}
 					});
 				}
-			}
+			}*/
 			
 			$('#attributeTable').bootstrapTable('refreshOptions',{
-				columns:columns
+				columns:columns,
+				pagination: false,
+				showHeader: false
 			});
+			
 			$('#attributeTable').bootstrapTable('removeAll');
-			$('#attributeTable').bootstrapTable( 'resetView' , {height: 400} );
-			$('#attributeTable').bootstrapTable('append', [feature]);
+			$('#attributeTable').bootstrapTable( 'resetView' , {height: 500} );
+			var tableRows = [];
+			for (var property in feature) {
+				if(property.toUpperCase().substr(0,2) != 'SM' || property.toUpperCase()=='SMID')
+				{
+					tableRows.push({
+						C1: property,
+						C2: feature[property]
+					});
+				}
+			}
+			// $('#attributeTable').bootstrapTable('append', [feature]);
+			$('#attributeTable').bootstrapTable('append', tableRows);
 			$('#dialogModal').modal('show');
 			
 			threeDGIS.threeDView.selectedFeature = feature;

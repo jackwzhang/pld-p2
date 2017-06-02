@@ -178,6 +178,82 @@ function ThreeDGIS(threeDView, twoDView, streetview, panoview)
 			_threeDView.toggleViewMode();
 	}
 	
+	// Note that here is a private function syncing 3D with 2D
+	var _MaptoScene = function() {
+		var thisObj = threeDGIS;
+		
+		var map = thisObj.twoDView.map;
+		var viewer = thisObj.threeDView.viewer;
+		
+		var bounds = map.getExtent();
+		
+		var boundsWidth = (bounds.right - bounds.left)/2;
+		var fov = viewer.camera.frustum.fov;
+		var altitude = boundsWidth / Math.tan(fov/2);
+		var altitude = 2*altitude;
+		
+		var center = map.getCenter();
+		var wgspt = CoordTransform.hk2wgs(center.lon, center.lat);
+		
+		viewer.camera.setView({
+			destination: Cesium.Cartesian3.fromDegrees(wgspt[0],wgspt[1],altitude),
+			orientation: {
+				heading: 0,
+				pitch: -Math.PI/2,
+				roll: 0
+			}
+		});
+	}
+	
+	// Note that here is a public function syncing 2D with 3D
+	ThreeDGIS.prototype.SceneToMap = function() {
+		var thisObj = threeDGIS;
+		
+		var map = thisObj.twoDView.map;
+		var viewer = thisObj.threeDView.viewer;
+		var camera = viewer.camera;
+		
+		var carto = Cesium.Cartographic.fromCartesian(camera.position);
+		var longitude = carto.longitude*180/Math.PI;
+		var latitude = carto.latitude*180/Math.PI;
+		var height = carto.height;
+		var heading = camera.heading;
+		var pitch = camera.pitch;
+		var fov = camera.frustum.fov;
+		
+		// Not seem to be reasonable considering heading and pitch, may not handle well with extreme values
+		// var horizontalDelta = height*(Math.tan(Math.PI/2+pitch));
+		
+		var boundWidthHalf = height*Math.tan(fov/2);
+		var hkpt = CoordTransform.wgs2hk(longitude, latitude);
+		var bounds = new SuperMap.Bounds(hkpt[0]-boundWidthHalf, hkpt[1]-boundWidthHalf, hkpt[0]+boundWidthHalf, hkpt[1]+boundWidthHalf);
+		map.zoomToExtent(bounds, false);
+	}
+	
+	// Sync threeD with twoD
+	ThreeDGIS.prototype.sync3Dwith2D = function(isActivating) {
+		var map = this.twoDView.map;
+		var viewer = this.threeDView.viewer;
+		
+		if(isActivating)
+			map.layers[0].events.on({"moveend": _MaptoScene});
+		else
+			map.layers[0].events.un({"moveend": _MaptoScene});
+	}
+	
+	// Sync twoD with threeD
+	ThreeDGIS.prototype.sync3Dwith2D = function(isActivating) {
+		var map = this.twoDView.map;
+		var viewer = this.threeDView.viewer;
+		
+		if(isActivating)
+		{
+			map.layers[0].events.on({"moveend": _MaptoScene});
+		}
+		else
+			map.layers[0].events.un({"moveend": _MaptoScene});
+	}
+	
 	/*
 	 * Static functions
 	 */
@@ -208,7 +284,9 @@ function ThreeDGIS(threeDView, twoDView, streetview, panoview)
 		$table.bootstrapTable('refreshOptions',{
 			columns:columns,
 			filter:true,
-			exportDataType: 'all'
+			exportDataType: 'all',
+			pagination: true,
+			showHeader: true
 		});  
 		// tableHTML += '</tr></thead>';
 		// $("#attributeTable").html(tableHTML);
