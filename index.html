@@ -18,18 +18,26 @@
     <!--<link href="../iClient/for3D/webgl/examples/css/flat-ui.css" rel="stylesheet">-->		<!-- What is this flat-ui? -->
 	
 	<style>
-        html, body, #cesiumContainer, #streetViewContainer, #SMapContainer {
+        html, body, #cesiumContainer, #streetViewContainer, #SMapContainer, #panoContainer {
             width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
         }
 		
 		#cesiumContainer {
 			position: absolute;
+			display: block;
 		}
 		
 		#streetViewContainer, #SMapContainer {
 			z-index: 1050;
 			display: none;
 			position: absolute;
+		}
+		
+		#panoContainer {
+			z-index: 1051;
+			display: none;
+			position: absolute;
+			pointer-events:none;
 		}
 		
 		.leftIcon {
@@ -191,6 +199,7 @@
 			</div>
 			<div id="SMapContainer"></div>
 			<div id="streetViewContainer"></div>
+			<div id="panoContainer"></div>
 		</div>
 		<div class="container-fluid">
 			<div class="row">
@@ -334,6 +343,15 @@
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Add&nbsp;model" id="btnAddModel"><span class="fa fa-building fa-2x toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Screen&nbsp;capture" id="btnCapture"><i class="fa fa-picture-o fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Buffer&nbsp;analysis" id="btnBuffer"><span class="glyphicon glyphicon-record toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Photo&nbsp;montage" id="iconPhotoMontage"><i class="fa fa-window-restore fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+		</div>
+		
+		<!-- Photo montage input -->
+		<div id='montageConsole' style="display:none">
+			<form id="formMontage"  name="frmImgFile" method="POST" enctype="multipart/form-data" style="display:none;">
+				<input type="file" accept="image/*"  name="imgFile" id="imgMontageFile" style="display:none;">
+			</form>
+			<img id="montagedImg"></img>
 		</div>
 		
 		<div id="toolsetEditing" style="position:absolute; right:10px; bottom:120px; z-index=3000; display:none">
@@ -682,6 +700,28 @@
 		</div>
 	</div>
 	
+	<div class="modal fade" id="montageModal" tabindex="-1" role="dialog" aria-labelledby="dialogModalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<span class="modal-title">Photo montage transparency setting</span>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body" style="overflow: auto; max-height:600px; max-width:800px;">
+					<br /><table style="border:0px !important;">
+						<tr>
+							<td style="width:300px;">Transparency:</td>
+							<td style="width:300px;"><input id="exMontageTransp" data-slider-id='ex1Slider' type="text" data-slider-min="0" data-slider-max="100" data-slider-step="1" data-slider-value="0"/></td>
+						</tr>
+					</table>
+					<br /><button type="button" class="btn" data-dismiss="modal" id='btnQuitMontage'>Close</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
 	<!--<div style="position:absolute; left:70px; top:35px; z-index:1003;">
 		<input id="exDay" data-slider-id='ex1Slider' type="text" data-slider-min="14400" data-slider-max="100800" data-slider-step="1" data-slider-value="14400"/></input>
 	</div>-->
@@ -874,7 +914,7 @@
 				new ThreeDView(viewer,$('#cesiumContainer'),$('#toolset3D')),
 				new TwoDView(null,$('#SMapContainer'),$('#toolset2D')),
 				$('#streetViewContainer'),		// Whether to make this a class (contain other functionality?)
-				null		// Not implemented
+				new PanoView('panoContainer')		// Not implemented
 			);
 			
 			// Use a polygon to perform buffer
@@ -2017,6 +2057,10 @@
 			}
 			$('#selectSplit').data("isopen", !open);
 		});
+		
+		$('#btnSightline').click(function() {
+			
+		});
 	</script>
 	
 	<!-- Bookmark manager -->
@@ -2972,7 +3016,7 @@
 				myChart.clear();
 				myChart.setOption({
 					title : {
-						text : '剖面图'
+						text : 'Profile Analysis'
 					},
 					tooltip: {
 						trigger: 'axis',
@@ -2982,7 +3026,7 @@
 							var y = param.data[1];
 							var lon = param.data[2];
 							var lat = param.data[3];
-							return 'x : ' + lon + '</br>' + 'y : ' + lat + '</br>' + 'z : ' + y;
+							return 'x : ' + lon.toFixed(3) + '</br>' + 'y : ' + lat.toFixed(3) + '</br>' + 'z : ' + y;
 						},
 						axisPointer: {
 							animation: false
@@ -2993,7 +3037,7 @@
 							saveAsImage: {},
 							myTool1 : {
 								show : true,
-								title : '关闭',
+								title : 'Close',
 								icon : 'path://M432.45,595.444c0,2.177-4.661,6.82-11.305,6.82c-6.475,0-11.306-4.567-11.306-6.82s4.852-6.812,11.306-6.812C427.841,588.632,432.452,593.191,432.45,595.444L432.45,595.444z M421.155,589.876c-3.009,0-5.448,2.495-5.448,5.572s2.439,5.572,5.448,5.572c3.01,0,5.449-2.495,5.449-5.572C426.604,592.371,424.165,589.876,421.155,589.876L421.155,589.876z M421.146,591.891c-1.916,0-3.47,1.589-3.47,3.549c0,1.959,1.554,3.548,3.47,3.548s3.469-1.589,3.469-3.548C424.614,593.479,423.062,591.891,421.146,591.891L421.146,591.891zM421.146,591.891',
 								onclick : function(){
 									$('#chart').hide();
@@ -3171,10 +3215,147 @@
 		});
 	</script>
 	
+	<!-- Photo montage -->
+	<script>
+		$('#iconPhotoMontage').click(function() {
+			
+			$('#imgMontageFile').click();
+			
+			// The following shows the photo. To be implemented after upload
+			// $('#panoContainer').css('display','block');
+		});
+		
+		$('#imgMontageFile').change(function(evt) {
+			// $(document).css('cursor','wait');
+			
+			var fileSelected = evt.target.files[0];
+			
+			if(fileSelected==undefined)
+				return;
+			
+			var reader = new FileReader();
+		
+			reader.onload = function () {
+				var img1;
+				img1 = null;
+				img1 = document.createElement("img")
+				img1.src = reader.result;
+				
+				//alert('reader.onload End!');
+				//Call after 0.5 second in case reload
+				// Following function reads EXIF
+				setTimeout(function() {
+					EXIF.getData(img1, function () {
+						threeDGIS.panoView.changeBackground(img1);
+						
+						var focalLength = EXIF.getTag(this, 'FocalLengthIn35mmFilm');
+						var lng = EXIF.getTag(this, 'GPSLongitude');
+						var lat = EXIF.getTag(this, 'GPSLatitude');
+						var h = EXIF.getTag(this, 'GPSAltitude');
+						var heading = EXIF.getTag(this, 'GPSImgDirection');
+						
+						var cesiumCamera = threeDGIS.threeDView.viewer.camera;
+						var carto = Cesium.Cartographic.fromCartesian(cesiumCamera.position);
+						if(lng!=undefined && lat!=undefined) {
+							carto.longitude = lng[0].valueOf()*Math.PI/180 + lng[1].valueOf()*Math.PI/(180*60) + lng[2].valueOf()*Math.PI/(180*3600);
+							carto.latitude = lat[0].valueOf()*Math.PI/180 + lat[1].valueOf()*Math.PI/(180*60) + lat[2].valueOf()*Math.PI/(180*3600);
+						}
+						if(h!=undefined) {
+							carto.height = h.valueOf();
+						}
+						
+						var orientation = {
+							heading: cesiumCamera.heading,
+							pitch: 0,
+							roll: 0
+						}
+						if(heading!=undefined) {
+							orientation.heading = heading.valueOf()*Math.PI/180;
+						}
+						
+						cesiumCamera.frustum.fov = 2*Math.atan(17.5/focalLength);
+						cesiumCamera.flyTo({
+							destination: Cesium.Cartesian3.fromDegrees(carto.longitude*180/Math.PI, carto.latitude*180/Math.PI, carto.height),
+							orientation: orientation,
+							duration: 3
+						});
+						
+						setTimeout(function() {
+							$('#panoContainer').css('display','block');
+							$('#panoContainer').css('opacity','1');
+							$('#montageModal').modal('show');
+							$('#exMontageTransp').bootstrapSlider("setValue",100);
+						},3000);
+						
+						img1.src='';
+						img1=undefined;
+					});
+				}, 500);
+			};
+			
+			reader.readAsDataURL(fileSelected);
+			
+			var form1 = document.getElementById('formMontage');
+			var formData = new FormData(form1);
+			
+			/*$.ajax({
+				url: host+'/3dgis_dev/UploadServlet_AJAX',
+				type: 'POST',
+				data: formData,
+				cache: false,
+				dataType: 'json',
+				processData: false, 
+				contentType: false, 
+				success: function(data)
+				{
+					gImgFile = data.FileName;
+					// $(document).css('cursor','default');
+					
+					
+				},
+				error: function(err, status) 
+				{
+					alert ('Error');
+					console.log('ERRORS: ' + err +  ' '  +status);
+				}
+			});*/
+			
+			
+		});
+		
+		var transpSlider = $('#exMontageTransp').bootstrapSlider({
+			formatter: function(value) {
+				return value + '%';
+			}
+		});
+		
+		transpSlider.bootstrapSlider('on','change',function(val) {
+			$('#panoContainer').css('opacity',val.newValue/100);
+		});
+		
+		$('#btnQuitMontage').click(function() {
+			$('#panoContainer').css('display','none');
+			$('#imgMontageFile').val('');
+		});
+	</script>
+	
 	<!-- Custom classes -->
+	<script src="lib/EXIF/exif.js"></script>
+	<script src="lib/threejs/build/three.min.js"></script>
+	<script src="lib/threejs/examples/js/shaders/CopyShader.js"></script>
+	<script src="lib/threejs/examples/js/postprocessing/EffectComposer.js"></script>
+	
+	<script src="lib/threejs/examples/js/postprocessing/ClearPass.js"></script>
+	<script src="lib/threejs/examples/js/postprocessing/RenderPass.js"></script>
+	<script src="lib/threejs/examples/js/postprocessing/TexturePass.js"></script>
+	<script src="lib/threejs/examples/js/postprocessing/CubeTexturePass.js"></script>
+	<script src="lib/threejs/examples/js/postprocessing/ShaderPass.js"></script>
+	
+	<script src="js/class/analysisComponents/SightLine.js"></script>
 	<script src="js/class/movement.js"></script>
 	<script src="js/class/viewerComponents/twoDView.js"></script>
 	<script src="js/class/viewerComponents/threeDView.js"></script>
+	<script src="js/class/viewerComponents/panoView.js"></script>
 	<script src="js/class/viewerComponents/3DGIS.js"></script>
 	<script src="js/class/3DBlock.js"></script>
 	<script src="js/MapToImg.js"></script>

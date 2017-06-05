@@ -4,14 +4,14 @@ function ThreeDGIS(threeDView, twoDView, streetview, panoview)
 	var _threeDView = threeDView;
 	var _twoDView = twoDView;
 	var _streetview = streetview;
-	var _panoview = panoview;
+	var _panoView = panoview;
 	var _mode = '3D';
 	
 	// Public field
 	this.threeDView = threeDView;
 	this.twoDView = twoDView;
 	this.streetview = streetview;
-	this.panoview = panoview;
+	this.panoView = panoview;
 	this.mode = ['3D'];		// Make this array to handle split view mode
 	this.isSplit = false;
 	
