@@ -254,6 +254,12 @@ function ThreeDGIS(threeDView, twoDView, streetview, panoview)
 			map.layers[0].events.un({"moveend": _MaptoScene});
 	}
 	
+	// Write info on the infobox
+	ThreeDGIS.prototype.writeInfo = function(txtInfo) {
+		// May I include the dom element of system infobox into one of the ThreeDGIS properties?
+		$('#txtSystemInfo').val(txtInfo);
+	}
+	
 	/*
 	 * Static functions
 	 */

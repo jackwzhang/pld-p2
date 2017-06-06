@@ -705,9 +705,9 @@
 			<div class="modal-content">
 				<div class="modal-header">
 					<span class="modal-title">Photo montage transparency setting</span>
-					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+					<!-- <button type="button" class="close" data-dismiss="modal" aria-label="Close">
 						<span aria-hidden="true">&times;</span>
-					</button>
+					</button> -->
 				</div>
 				<div class="modal-body" style="overflow: auto; max-height:600px; max-width:800px;">
 					<br /><table style="border:0px !important;">
@@ -781,7 +781,7 @@
 						url: host+'/iserver/services/3D-Phase2_Data/rest/realspace/datas/HK_DTM_1@dem',
 						isSct: true
 					}),
-					shadows: true,
+					// shadows: true,
 					contextOptions: {
 						webgl:{preserveDrawingBuffer:true}
 					}
@@ -1277,7 +1277,7 @@
 			threeDGIS.threeDView.pointHandler = pointHandler;
 
 			var viewshed3D = new Cesium.ViewShed3D(scene);
-			threeDGIS.threeDView.viewshed = viewshed3D;
+			threeDGIS.threeDView.analysis3D.viewshed = viewshed3D;
 			/*var handler = new Cesium.ScreenSpaceEventHandler(scene.canvas);
 
 			handler.setInputAction(function(e){
@@ -1325,10 +1325,12 @@
 				}*/
 				threeDGIS.threeDView.removeAnalysisEntities();
 
-				threeDGIS.threeDView.viewshed.distance = 400;
+				threeDGIS.threeDView.analysis3D.viewshed.distance = 400;
 				scene.viewFlag = true;
 
 				threeDGIS.threeDView.pointHandler.activate();
+				
+				threeDGIS.writeInfo('Left click to select view point.');
 			});
 			
 			$('#btnSetScale2D').click(function (){
@@ -1337,7 +1339,6 @@
 				if($.isNumeric(scaleString))
 				{
 					var scaleNum = Number(scaleString);
-					
 					threeDGIS.twoDView.map.zoomToScale(scaleNum);
 				}
 				else
@@ -1364,8 +1365,8 @@
 				var height = cartographic.height;
 
 				if(scene.viewFlag) {
-					threeDGIS.threeDView.viewshed.viewPosition = [longitude, latitude, height+2.5];
-					threeDGIS.threeDView.viewshed.build();
+					threeDGIS.threeDView.analysis3D.viewshed.viewPosition = [longitude, latitude, height+2.5];
+					threeDGIS.threeDView.analysis3D.viewshed.build();
 					scene.viewFlag = false;
 				}
 			});
@@ -2056,10 +2057,6 @@
 				}
 			}
 			$('#selectSplit').data("isopen", !open);
-		});
-		
-		$('#btnSightline').click(function() {
-			
 		});
 	</script>
 	
@@ -2950,6 +2947,8 @@
 			$('#btnProfile').click(function() {
 				deactiveAll();
 				handlerLine.activate();
+				
+				threeDGIS.writeInfo('Left click to add new vertex for profile line. Right click to finish.');
 			});
 			function deactiveAll(){
 				handlerLine.deactivate();
@@ -2962,10 +2961,11 @@
 				var line = CesiumToSuperMap.convertPolyline(Cesium,SuperMap,resultObject);
 				// var profileUrl = 'http://pld-3dappdev.pland.hksarg/iserver/services/spatialAnalysis-PlanD_Phase1/restjsr/spatialanalyst/datasets/DTM_2@data/terraincalculation/profile.jsonp?returnContent=true';
 				var points = [];
+				var vertices = line.getVertices();
 				
-				for(var i=0; i<=1; i++)
+				for(var i=0; i<vertices.length; i++)
 				{
-					var hkpt = CoordTransform.wgs2hk(line.getVertices()[i].x, line.getVertices()[i].y);
+					var hkpt = CoordTransform.wgs2hk(vertices[i].x, vertices[i].y);
 					points.push(new SuperMap.Geometry.Point(hkpt[0], hkpt[1]));
 				}
 				// points.push(new SuperMap.Geometry.Point(line.getVertices()[0].x, line.getVertices()[0].y));
@@ -2973,7 +2973,7 @@
 				var serverGeometry = new SuperMap.REST.ServerGeometry({
 					id : 0,//???number??
 					style : null,
-					parts : [2],
+					parts : [points.length],
 					type : 'LINE',
 					points : points,
 					prjCoordSys : null
@@ -2987,6 +2987,7 @@
 					},
 					success : function(args){
 						buildProfile(args);
+						threeDGIS.writeInfo('Profile analysis finished');
 					},
 					failure : function(err){
 						console.log(err);
@@ -3218,7 +3219,6 @@
 	<!-- Photo montage -->
 	<script>
 		$('#iconPhotoMontage').click(function() {
-			
 			$('#imgMontageFile').click();
 			
 			// The following shows the photo. To be implemented after upload
@@ -3248,11 +3248,14 @@
 					EXIF.getData(img1, function () {
 						threeDGIS.panoView.changeBackground(img1);
 						
+						console.log(EXIF.getAllTags(this));
 						var focalLength = EXIF.getTag(this, 'FocalLengthIn35mmFilm');
 						var lng = EXIF.getTag(this, 'GPSLongitude');
 						var lat = EXIF.getTag(this, 'GPSLatitude');
 						var h = EXIF.getTag(this, 'GPSAltitude');
 						var heading = EXIF.getTag(this, 'GPSImgDirection');
+						
+						var make = EXIF.getTag(this, 'Make');
 						
 						var cesiumCamera = threeDGIS.threeDView.viewer.camera;
 						var carto = Cesium.Cartographic.fromCartesian(cesiumCamera.position);
@@ -3260,35 +3263,57 @@
 							carto.longitude = lng[0].valueOf()*Math.PI/180 + lng[1].valueOf()*Math.PI/(180*60) + lng[2].valueOf()*Math.PI/(180*3600);
 							carto.latitude = lat[0].valueOf()*Math.PI/180 + lat[1].valueOf()*Math.PI/(180*60) + lat[2].valueOf()*Math.PI/(180*3600);
 						}
-						if(h!=undefined) {
-							carto.height = h.valueOf();
-						}
 						
-						var orientation = {
-							heading: cesiumCamera.heading,
-							pitch: 0,
-							roll: 0
-						}
-						if(heading!=undefined) {
-							orientation.heading = heading.valueOf()*Math.PI/180;
-						}
+						Cesium.sampleTerrain(threeDGIS.threeDView.viewer.terrainProvider, 17, [carto])
+							.then(function(samples) {
+								if(h!=undefined) {
+									h = h.valueOf();
+								}
+								else
+								{
+									if(make.toLowerCase().indexOf("dji")==-1)	// Not DJI image, supposed to be on the ground?
+										h = samples[0].height+2;
+									else	// DJI image, supposed to be with height of 100m?
+										h = samples[0].height+100;
+								}
+								
+								var orientation = {
+									heading: 0,
+									pitch: 0,
+									roll: 0
+								}
+								if(heading!=undefined) {
+									orientation.heading = heading.valueOf()*Math.PI/180;
+									
+									if(EXIF.getTag(this, 'GPSImgDirectionRef')=='M')
+										console.warn('The image direction value captured is referred to \'Magnetic North\', which differs from the \'True North\'');
+								}
+								
+								if(make.toLowerCase().indexOf("dji")!=-1)	// If is DJI image, look downwards
+									orientation.pitch = -Math.PI/2;
+								
+								cesiumCamera.frustum.fov = 2*Math.atan(17.5/focalLength);
+								cesiumCamera.flyTo({
+									destination: Cesium.Cartesian3.fromDegrees(carto.longitude*180/Math.PI, carto.latitude*180/Math.PI, h),
+									orientation: orientation,
+									duration: 3
+								});
+								
+								setTimeout(function() {
+									$('#panoContainer').css('display','block');
+									$('#panoContainer').css('opacity','1');
+									$('#exMontageTransp').bootstrapSlider("setValue",100);
+									
+									$('#montageModal').modal({
+										backdrop: 'static',
+										keyboard: false
+									});
+								},3000);
+								
+								img1.src='';
+								img1=undefined;
+							});
 						
-						cesiumCamera.frustum.fov = 2*Math.atan(17.5/focalLength);
-						cesiumCamera.flyTo({
-							destination: Cesium.Cartesian3.fromDegrees(carto.longitude*180/Math.PI, carto.latitude*180/Math.PI, carto.height),
-							orientation: orientation,
-							duration: 3
-						});
-						
-						setTimeout(function() {
-							$('#panoContainer').css('display','block');
-							$('#panoContainer').css('opacity','1');
-							$('#montageModal').modal('show');
-							$('#exMontageTransp').bootstrapSlider("setValue",100);
-						},3000);
-						
-						img1.src='';
-						img1=undefined;
 					});
 				}, 500);
 			};
@@ -3336,6 +3361,13 @@
 		$('#btnQuitMontage').click(function() {
 			$('#panoContainer').css('display','none');
 			$('#imgMontageFile').val('');
+		});
+	</script>
+	
+	<script>
+		$('#btnSightline').click(function() {
+			threeDGIS.threeDView.sightLineAnalysis();
+			threeDGIS.writeInfo('Left click to select view point.');
 		});
 	</script>
 	

@@ -23,6 +23,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	var _drawPolylineHandler = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Line);
 	var _drawPolygonHandler = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Polygon);
 	
+	
 	// Viewshed position
 	this.viewPosition;
 	
@@ -33,8 +34,13 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	this.viewMode = 'Bird-eye';
 	this.selectedBlocks = {};	// Selected entities in the scene
 	
-	this.pointHandler;
-	this.viewshed3D;
+	this.pointHandler;		// Check where I used this pointHandler
+	
+	// Analysis object list
+	this.analysis3D = {
+		viewshed: null,
+		sightLine: new SightLine(this.viewer.scene),
+	};
 	
 	// Flags
 	this.selectBlockFlag = true;		// Whether enable select 3D Blocks. Not implemented yet.
@@ -87,12 +93,14 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		
 		_handlerDis.clear();
 		_handlerHeight.clear();
-		this.viewshed.destroy();
-		this.viewshed = new Cesium.ViewShed3D(threeDGIS.threeDView.viewer.scene);
+		this.analysis3D.viewshed.destroy();
+		this.analysis3D.viewshed = new Cesium.ViewShed3D(threeDGIS.threeDView.viewer.scene);
 	
 		_drawPointHandler.clear();
 		_drawPolylineHandler.clear();
 		_drawPolygonHandler.clear();
+		
+		this.analysis3D.sightLine.clear();
 	}
 	
 	// Add label manually into 3D
@@ -647,48 +655,15 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 			if(thisObj.selectBlockFlag)
 				thisObj.addBlockSelection(id);
 				
-			// Test buffer
-			/*if(thisObj.pointBufferFlag)
+			// Show distance from camera to picked position in infobox
+			var cp = threeDGIS.threeDView.viewer.camera.position;
+			if(cp==undefined)
+				threeDGIS.writeInfo('Click position not identifiable');
+			else
 			{
-				var cartographic = Cesium.Cartographic.fromCartesian(cartesianPosition);
-				var hkpt = CoordTransform.wgs2hk(cartographic.longitude*180/Math.PI, cartographic.latitude*180/Math.PI);
-				var point2D = new SuperMap.Geometry.Point(hkpt[0], hkpt[1]);
-				
-				var selectedFeatureProcessCompleted = function(e)
-				{
-					var features = e.result.features;
-					ThreeDGIS.rewriteAttributeTable(features);
-					
-					$('#iconAttributeTable').click();
-					
-					var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
-					layerBldgVec.releaseSelection();
-					var selectedIDs = [];
-					for(var i=0; i<features.length; i++)
-						selectedIDs.push(Number(features[i].data["SMID"]));
-						
-					layerBldgVec.setSelection(selectedIDs);
-					
-				}
-				
-				var processFailed = function(e){console.log('Buffer not successful');}
-				
-				var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
-					datasetNames: ["10.40.106.82_P2_Sample_Data:Bldg_HK80"],		// Using hardcode
-					bufferDistance: 300,
-					geometry: point2D,
-					toIndex:9999
-				});
-				var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
-					eventListeners: {
-						"processCompleted": selectedFeatureProcessCompleted,
-						"processFailed": processFailed
-					}
-				});
-				getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
-				
-				thisObj.pointBufferFlag = false;
-			}*/
+				var camClickDistance = Cesium.Cartesian3.distance(cartesianPosition, cp);
+				threeDGIS.writeInfo('Camera to picked point distance: '+camClickDistance.toFixed(3)+'m');
+			}
 		},Cesium.ScreenSpaceEventType.LEFT_CLICK);
 	}
 	
@@ -784,6 +759,52 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		}
 	}
 	
+	ThreeDView.prototype.sightLineAnalysis = function() {
+		var sightLine = this.analysis3D.sightLine;
+		sightLine.clear();
+		
+		function addSightLinePoint(e) {
+			var thisObj = threeDGIS.threeDView;
+			var viewer = thisObj.viewer;
+			var cartesianPosition = viewer.scene.pickPosition(e.position);
+			var carto = Cesium.Cartographic.fromCartesian(cartesianPosition);
+			
+			sightLine.addPoint(carto);
+
+			threeDGIS.writeInfo('Left click to add target point. Right click to finish.');
+		}
+		
+		function moveTarget(e) {
+			var position = e.endPosition;
+			var cartesianPosition = threeDGIS.threeDView.viewer.scene.pickPosition(position);
+			var carto = Cesium.Cartographic.fromCartesian(cartesianPosition);
+			
+			if(sightLine.pointCount>0)
+			{
+				sightLine.removeLastTargetPoint();
+				sightLine.addPoint(carto);
+			}
+		}
+		
+		function finishAnalysis() {
+			// This right click and mouse move event is not cancelling
+			_handler.removeInputAction(Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+			_handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
+			
+			
+			_handler.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+			threeDGIS.writeInfo('Line of sight analysis finished.');
+			threeDGIS.threeDView.enableClickSelect();
+			
+			// Remove mouse move target
+			// sightLine.removeLastTargetPoint();
+		}
+		
+		_handler.setInputAction(addSightLinePoint,Cesium.ScreenSpaceEventType.LEFT_CLICK);
+		_handler.setInputAction(moveTarget, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+		_handler.setInputAction(finishAnalysis,Cesium.ScreenSpaceEventType.RIGHT_CLICK);
+	}
+	
 	/*
 	 * Initialization after construction
 	 */
@@ -849,10 +870,10 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 				var latitude = Cesium.Math.toDegrees(cartographic.latitude);
 				var height = cartographic.height;
 
-				thisObj.viewshed.setDistDirByPoint([longitude, latitude, height]);
+				thisObj.analysis3D.viewshed.setDistDirByPoint([longitude, latitude, height]);
 				
-				if(thisObj.viewshed.distance<400)
-					thisObj.viewshed.distance = 400;
+				if(thisObj.analysis3D.viewshed.distance<400)
+					thisObj.analysis3D.viewshed.distance = 400;
 			}
 		}
 	},Cesium.ScreenSpaceEventType.MOUSE_MOVE);

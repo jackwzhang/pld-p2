@@ -1,12 +1,23 @@
 function SightLine(scene)
 {
-	// private fields pre-defined
+	// Private fields pre-defined
 	var _startPoint;
 	var _endPoint = [];
 	var _lineOfSight = new Cesium.Sightline(scene);
 	
+	// Object properties
+	Object.defineProperty(this, "pointCount",
+    {
+        get: function () { 
+			if(_startPoint!=undefined)
+				return _endPoint.length+1;
+			else
+				return 0;
+		}
+    });
+	
 	/*
-	 * public functions
+	 * Public functions
 	 */
 	// Add point for the line of sight
 	// If not yet have observe/start point, regard input as observe/start point
@@ -25,14 +36,30 @@ function SightLine(scene)
 				position : [cartoPoint.longitude*180/Math.PI, cartoPoint.latitude*180/Math.PI, cartoPoint.height],
 				name : "point" + _endPoint.length
 			});
+			_lineOfSight.build();
 		}
+	}
+	
+	// Remove the last target point
+	SightLine.prototype.removeLastTargetPoint = function() {
+		if(_endPoint.length==0)
+			return false;
+		
+		var targetCount = _endPoint.length;
+		var notify = _lineOfSight.removeTargetPoint('point'+targetCount);
+		if(notify)
+			_endPoint.pop();
+		return notify;
 	}
 	
 	// Clear line of sight
 	SightLine.prototype.clear = function() {
-		_lineOfSight.removeAllTargetPoint();
-		_startPoint = undefined;
-		_endPoint = [];
+		if(_startPoint!=undefined)
+		{
+			_lineOfSight.removeAllTargetPoint();
+			_startPoint = undefined;
+			_endPoint = [];
+		}
 	}
 	
 	/*
