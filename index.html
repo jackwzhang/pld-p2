@@ -334,9 +334,11 @@
 			<li><a href="#" data-toggle="tooltip" data-placement="left" title="Identification"><i class="fa fa-eye fa-2x toolsetItem" aria-hidden="true"></i></a></li>
 			<li><a href="#" data-toggle="tooltip" data-placement="left" title="Search"><i class="fa fa-search fa-2x toolsetItem" aria-hidden="true"></i></a></li> -->
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Profile&nbsp;analysis" id="btnProfile"><i class="fa fa-area-chart fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Profile&nbsp;analysis&nbsp;2" id="btnProfile2"><i class="fa fa-area-chart fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Skyline&nbsp;analysis" id="btnSkyline"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Viewshed&nbsp;analysis" id="btnViewshed"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Slghtline&nbsp;analysis" id="btnSightline"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
+			<!-- <div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Slghtline&nbsp;analysis2" id="btnSightline2"><i class="fa fa-list-alt fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div> -->
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Clear&nbsp;analysis" id="btnClearAll" onclick="threeDGIS.threeDView.removeAnalysisEntities();"><i class="fa fa-trash fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Walk&nbsp;mode" id="btnWalkmode"><span class="glyphicon glyphicon-road toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
 			<div class="rightToolContainer" style="display:none;"><a href="#" data-toggle="tooltip" data-placement="left" title="Street&nbsp;view" id="btnStreetView"><i class="fa fa-street-view fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
@@ -722,6 +724,25 @@
 		</div>
 	</div>
 	
+	<div class="modal fade" id="profileOSGBModal" tabindex="-1" role="dialog" aria-labelledby="dialogModalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<span class="modal-title">Profile result</span>
+					<!-- <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button> -->
+				</div>
+				<div class="modal-body" style="overflow: auto; max-height:600px; max-width:800px;">
+					<canvas id="profileImg"></canvas>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
 	<!--<div style="position:absolute; left:70px; top:35px; z-index:1003;">
 		<input id="exDay" data-slider-id='ex1Slider' type="text" data-slider-min="14400" data-slider-max="100800" data-slider-step="1" data-slider-value="14400"/></input>
 	</div>-->
@@ -789,6 +810,7 @@
 				});
 				
 				viewer.scene.globe.enableLighting = true;
+				viewer.scene.globe.depthTestAgainstTerrain = true;
 				// viewer.scene.globe.shadows = Cesium.ShadowMode.ENABLED;	// Does not seem to make any difference
 			}
 			catch(e)
@@ -1381,9 +1403,7 @@
 					$('#btnStreetView').parent().css('display','block');
 					
 				// movementCtrl.toggle();
-			})
-			
-			initProfile();
+			});
 			
 			// Write this upon attribute appear, not on initialize of cesium
 			initAttributeTable();
@@ -2941,150 +2961,16 @@
 	
 	<!-- Profile analysis -->
 	<script>
-		function initProfile() {
-			var viewer = threeDGIS.viewer3D;
-			
-			$('#btnProfile').click(function() {
-				deactiveAll();
-				handlerLine.activate();
-				
-				threeDGIS.writeInfo('Left click to add new vertex for profile line. Right click to finish.');
-			});
-			function deactiveAll(){
-				handlerLine.deactivate();
-			}
-			function addResultLayer() {
-				if(!resultObject){
-					alert('No profile line plot!');
-					return ;
-				}
-				var line = CesiumToSuperMap.convertPolyline(Cesium,SuperMap,resultObject);
-				// var profileUrl = 'http://pld-3dappdev.pland.hksarg/iserver/services/spatialAnalysis-PlanD_Phase1/restjsr/spatialanalyst/datasets/DTM_2@data/terraincalculation/profile.jsonp?returnContent=true';
-				var points = [];
-				var vertices = line.getVertices();
-				
-				for(var i=0; i<vertices.length; i++)
-				{
-					var hkpt = CoordTransform.wgs2hk(vertices[i].x, vertices[i].y);
-					points.push(new SuperMap.Geometry.Point(hkpt[0], hkpt[1]));
-				}
-				// points.push(new SuperMap.Geometry.Point(line.getVertices()[0].x, line.getVertices()[0].y));
-				// points.push(new SuperMap.Geometry.Point(line.getVertices()[1].x, line.getVertices()[1].y));
-				var serverGeometry = new SuperMap.REST.ServerGeometry({
-					id : 0,//???number??
-					style : null,
-					parts : [points.length],
-					type : 'LINE',
-					points : points,
-					prjCoordSys : null
-				});
-				SuperMap.Util.committer({
-					method : 'POST',
-					url : profileUrl,
-					data : {
-						line : serverGeometry,
-						resampleTolerance : '0.5'
-					},
-					success : function(args){
-						buildProfile(args);
-						threeDGIS.writeInfo('Profile analysis finished');
-					},
-					failure : function(err){
-						console.log(err);
-					}
-				});
-			}
-
-			function buildProfile(result){
-				var profileRes = result.profile[0];
-				var xyCoord = result.xyCoordinate[0];
-				if(!profileRes || !xyCoord){
-					return ;
-				}
-				var xMax = 0,yMax = 0;
-				var points = profileRes.points;
-				var xyCoordPoints = xyCoord.points;
-				var arr = [];
-				for(var i = 0,j = points.length;i < j;i++){
-					var x = points[i].x;
-					var y = points[i].y;
-					var lon = xyCoordPoints[i].x;
-					var lat = xyCoordPoints[i].y;
-					arr.push([x,y,lon,lat]);
-					xMax = x > xMax ? x : xMax;
-					yMax = y > yMax ? y : yMax;
-				}
-				myChart.clear();
-				myChart.setOption({
-					title : {
-						text : 'Profile Analysis'
-					},
-					tooltip: {
-						trigger: 'axis',
-						formatter: function (params) {
-							var param = params[0];
-							var x = param.data[0];
-							var y = param.data[1];
-							var lon = param.data[2];
-							var lat = param.data[3];
-							return 'x : ' + lon.toFixed(3) + '</br>' + 'y : ' + lat.toFixed(3) + '</br>' + 'z : ' + y;
-						},
-						axisPointer: {
-							animation: false
-						}
-					},
-					toolbox: {
-						feature: {
-							saveAsImage: {},
-							myTool1 : {
-								show : true,
-								title : 'Close',
-								icon : 'path://M432.45,595.444c0,2.177-4.661,6.82-11.305,6.82c-6.475,0-11.306-4.567-11.306-6.82s4.852-6.812,11.306-6.812C427.841,588.632,432.452,593.191,432.45,595.444L432.45,595.444z M421.155,589.876c-3.009,0-5.448,2.495-5.448,5.572s2.439,5.572,5.448,5.572c3.01,0,5.449-2.495,5.449-5.572C426.604,592.371,424.165,589.876,421.155,589.876L421.155,589.876z M421.146,591.891c-1.916,0-3.47,1.589-3.47,3.549c0,1.959,1.554,3.548,3.47,3.548s3.469-1.589,3.469-3.548C424.614,593.479,423.062,591.891,421.146,591.891L421.146,591.891zM421.146,591.891',
-								onclick : function(){
-									$('#chart').hide();
-								}
-							}
-						}
-					},
-					grid: {
-						left: '3%',
-						right: '4%',
-						bottom: '3%',
-						containLabel: true
-					},
-					xAxis : {
-						min : 0,
-						max : xMax*1.2,
-						type : 'value'
-					},
-					yAxis : {
-						type : 'value',
-						min : 0,
-						max : yMax*1.2
-					},
-					series : [{
-						type : 'line',
-						data : arr,
-						showSymbol: false,
-						color : 'green'
-					}],
-					backgroundColor : 'white',
-					color : '#c23531'
-				});
-				$('#chart').show();
-			}
-			
-			var scene = viewer.scene;
-			
-			var resultObject;
-			var handlerLine = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Line,1);
-			handlerLine.drawEvt.addEventListener(function(result){
-				resultObject = result.object;
-				addResultLayer();
-			});
-			// viewer.flyTo(imageryLayer);
-			var myChart = echarts.init(document.getElementById('chart'));
-		}
+		var profileMode = '2D';
+		
+		$('#btnProfile').click(function() {
+			threeDGIS.threeDView.analysis3D.profile.doProfile2D();
+			threeDGIS.writeInfo('Left click to add new vertex for profile line. Right click to finish.');
+		});
+		$('#btnProfile2').click(function() {
+			threeDGIS.threeDView.analysis3D.profile.doProfile3D();
+			threeDGIS.writeInfo('Left click to add new vertex for profile line. Right click to finish.');
+		});
 	</script>
 	
 	<!-- Edit_block_mode.js -->
@@ -3369,6 +3255,10 @@
 			threeDGIS.threeDView.sightLineAnalysis();
 			threeDGIS.writeInfo('Left click to select view point.');
 		});
+		
+		$('#btnSightline2').click(function() {
+			// A line of paralell sightlines, simulates ventilation analysis
+		});
 	</script>
 	
 	<!-- Custom classes -->
@@ -3384,6 +3274,7 @@
 	<script src="lib/threejs/examples/js/postprocessing/ShaderPass.js"></script>
 	
 	<script src="js/class/analysisComponents/SightLine.js"></script>
+	<script src="js/class/analysisComponents/Profile.js"></script>
 	<script src="js/class/movement.js"></script>
 	<script src="js/class/viewerComponents/twoDView.js"></script>
 	<script src="js/class/viewerComponents/threeDView.js"></script>

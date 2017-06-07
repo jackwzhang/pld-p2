@@ -40,6 +40,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	this.analysis3D = {
 		viewshed: null,
 		sightLine: new SightLine(this.viewer.scene),
+		profile: new Profile(this.viewer, host+'/iserver/services/spatialAnalysis-Phase2_Data/restjsr/spatialanalyst/datasets/HK_DTM_80@10.40.106.82_P2_Sample_Data/terraincalculation/profile.jsonp?returnContent=true')
 	};
 	
 	// Flags
@@ -787,6 +788,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		}
 		
 		function finishAnalysis() {
+			console.log('right click finish');
 			// This right click and mouse move event is not cancelling
 			_handler.removeInputAction(Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 			_handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
