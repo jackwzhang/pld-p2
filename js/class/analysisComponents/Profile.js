@@ -87,6 +87,17 @@ function Profile(viewer, terrainSpatialAnalyURL)
 				backdrop: 'static',
 				keyboard: false
 			});
+			
+			// A stupid way to get and reduce the width of the newly added line
+			var entitiesValues = threeDGIS.threeDView.viewer.entities.values;
+			for(var i=entitiesValues.length-1; i>=0; i++)
+			{
+				if(entitiesValues[i].corridor!=undefined)	// If the entity is a corridor, likely to be the newly added line profiling OSGB
+				{
+					entitiesValues[i].corridor.width.setValue(5);
+					break;
+				}
+			}
 		}
 	}
 	
@@ -185,12 +196,18 @@ function Profile(viewer, terrainSpatialAnalyURL)
 		_deactiveProfile();
 		this.clear();
 		_handlerLineObject.activate();
+		
+		// Consider to turn off OSGB layers, since currently 3D profiling have collision with USV OSGB
 	}
 	
 	// Clear profile line from the scene
 	Profile.prototype.clear = function() {
 		_handlerLineTerrain.clear();
 		_handlerLineObject.clear();
+		
+		_profile3D.startPoint = [0,0,0];
+		_profile3D.endPoint = [0.01,0.01,0];
+		// _profile3D.build();
 	}
 	
 	// Implementation after initialization

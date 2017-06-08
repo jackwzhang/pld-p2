@@ -215,7 +215,7 @@
 							<div id="3DLayers">
 								<ul class="list-group checked-list-box" id="layerList">
 									<li class="list-group-item" data-checked="true">Base_Map</li>
-									<li class="list-group-item" data-checked="true">SPOT_RGB</li>
+									<!-- <li class="list-group-item" data-checked="true">SPOT_RGB</li> -->
 									<li class="list-group-item" data-checked="true">OZP_Zone</li>
 									<li class="list-group-item" data-checked="true">Lot_Map</li>
 									<li class="list-group-item" data-checked="true">Terrain</li>
@@ -346,14 +346,6 @@
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Screen&nbsp;capture" id="btnCapture"><i class="fa fa-picture-o fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Buffer&nbsp;analysis" id="btnBuffer"><span class="glyphicon glyphicon-record toolsetItem3D" style="font-size: 28px;" aria-hidden="true"></span></a><br /></div>
 			<div class="rightToolContainer"><a href="#" data-toggle="tooltip" data-placement="left" title="Photo&nbsp;montage" id="iconPhotoMontage"><i class="fa fa-window-restore fa-2x toolsetItem3D" aria-hidden="true"></i></a><br /></div>
-		</div>
-		
-		<!-- Photo montage input -->
-		<div id='montageConsole' style="display:none">
-			<form id="formMontage"  name="frmImgFile" method="POST" enctype="multipart/form-data" style="display:none;">
-				<input type="file" accept="image/*"  name="imgFile" id="imgMontageFile" style="display:none;">
-			</form>
-			<img id="montagedImg"></img>
 		</div>
 		
 		<div id="toolsetEditing" style="position:absolute; right:10px; bottom:120px; z-index=3000; display:none">
@@ -712,16 +704,37 @@
 					</button> -->
 				</div>
 				<div class="modal-body" style="overflow: auto; max-height:600px; max-width:800px;">
-					<br /><table style="border:0px !important;">
-						<tr>
-							<td style="width:300px;">Transparency:</td>
-							<td style="width:300px;"><input id="exMontageTransp" data-slider-id='ex1Slider' type="text" data-slider-min="0" data-slider-max="100" data-slider-step="1" data-slider-value="0"/></td>
-						</tr>
-					</table>
-					<br /><button type="button" class="btn" data-dismiss="modal" id='btnQuitMontage'>Close</button>
+					<br />
+					<div id='montageConsole'>
+						<form id="formMontage" name="frmImgFile" method="POST" enctype="multipart/form-data">
+							<div class="form-group row">
+								<label for="imgFile" class="col-sm-3 col-form-label">Select image file</label>
+								<div class="col-sm-9">
+									<input class="form-control col-xs-2" type="file" accept="image/*"  name="imgFile" id="imgMontageFile">
+								</div>
+							</div>
+							
+							<div class="form-group row">
+								<label for="selectMontageMoveMode" class="col-sm-3 col-form-label">Split Screen</label>
+								<div class="col-sm-9">
+									<select class="form-control col-xs-2" id="selectMontageMoveMode" name="split">
+										<option value="1">Pano mode</option>
+										<option value="0">Bird-eye mode</option>
+									</select>
+								</div>
+							</div>
+						</form>
+					</div>
+					<br />
+					<button type="button" class="btn" id='btnQuitMontage'>Stop montage</button>
+					<button type="button" class="btn" data-dismiss="modal">Close</button>
 				</div>
 			</div>
 		</div>
+	</div>
+	
+	<div id="montageScaleBar" style="position:absolute; left:70px; top:35px; z-index:1003; display:none">
+		<input id="exMontageTransp" data-slider-id='ex1Slider' type="text" data-slider-min="0" data-slider-max="100" data-slider-step="1" data-slider-value="0"/>
 	</div>
 	
 	<div class="modal fade" id="profileOSGBModal" tabindex="-1" role="dialog" aria-labelledby="dialogModalLabel" aria-hidden="true">
@@ -820,107 +833,6 @@
 			}
 			
 			handlerPolygon = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Polygon);
-			computeBuffer = function(result){
-				var polygon = result.object.polygon;
-				var point2Ds = [];
-				
-				if(polygon.hierarchy)
-				{
-					var hierarchy = polygon.hierarchy.getValue();
-					
-					for(var i=0; i<hierarchy.length; i++)
-					{
-						var cartographic = Cesium.Cartographic.fromCartesian(hierarchy[i]);
-						var hkpt = CoordTransform.wgs2hk(cartographic.longitude*180/Math.PI, cartographic.latitude*180/Math.PI);
-						point2Ds.push(new SuperMap.Geometry.Point(hkpt[0], hkpt[1]));
-					}
-					var linearRings = new SuperMap.Geometry.LinearRing(point2Ds);
-					var region = new SuperMap.Geometry.Polygon([linearRings]);
-				}
-				else
-					region = polygon;
-				
-				var selectedFeatureProcessCompleted = function(e)
-				{
-					var features = e.result.features;
-					ThreeDGIS.rewriteAttributeTable(features);
-					
-					$('#iconAttributeTable').click();
-					
-					var layerBldgVec = viewer.scene.layers.find('bldg_wgs');
-					layerBldgVec.releaseSelection();
-					var selectedIDs = [];
-					for(var i=0; i<features.length; i++)
-						selectedIDs.push(Number(features[i].data["SMID"]));
-						
-					layerBldgVec.setSelection(selectedIDs);
-				}
-				
-				var processFailed = function(e){console.log('Buffer not successful');}
-				
-				var getFeaturesByGeometryParams = new SuperMap.REST.GetFeaturesByBufferParameters({
-					datasetNames: ["10.40.106.82_P2_Sample_Data:Bldg_HK80"],		// Using hardcode
-					bufferDistance: Number($('#bfrSize').val()),
-					geometry: region,
-					toIndex:9999
-				});
-				var getFeaturesByGeometryService = new SuperMap.REST.GetFeaturesByBufferService(host+'/iserver/services/data-Phase2_Data/rest/data/', {
-					eventListeners: {
-						"processCompleted": selectedFeatureProcessCompleted,
-						"processFailed": processFailed
-					}
-				});
-				getFeaturesByGeometryService.processAsync(getFeaturesByGeometryParams);
-				
-				var bufferAnalystCompleted = function(args) {
-					if(args){
-						var bufferResultGeometry = args.result.resultGeometry;
-						var hkVertices = bufferResultGeometry.getVertices();
-						
-						// Convert the HK80 coordinate of the vertices to WGS84 and then plot out
-						var wgsVertices = [];
-						for(var i=0; i<hkVertices.length; i++)
-						{
-							var wgspt = CoordTransform.hk2wgs(hkVertices[i].x, hkVertices[i].y);
-							wgsVertices.push(Cesium.Cartesian3.fromDegrees(wgspt[0],wgspt[1]));
-						}
-						
-						var polygon = new Cesium.PolygonGraphics({
-							hierarchy: new Cesium.PolygonHierarchy(wgsVertices),
-							material: new Cesium.Color(1.0, 0.2, 0.6, 0.7),
-							outline: true,
-							outlineColor : Cesium.Color.BLACK,
-						});
-						
-						threeDGIS.threeDView.viewer.entities.add({
-							id: 'buffer',
-							polygon: polygon,
-							outline: true,
-							shadows: Cesium.ShadowMode.ENABLED		// Does not seem to be working
-						});
-					}
-				}
-				
-				var bufferServiceByGeometry = new SuperMap.REST.BufferAnalystService(host+'/iserver/services/spatialAnalysis-Phase2_Data/restjsr/spatialanalyst'),
-                        bufferDistance = new SuperMap.REST.BufferDistance({
-                            value: Number($('#bfrSize').val())
-                        }),
-                        bufferSetting = new SuperMap.REST.BufferSetting({
-                            endType: SuperMap.REST.BufferEndType.ROUND,
-                            leftDistance: bufferDistance,
-                            rightDistance: bufferDistance,
-                            semicircleLineSegment: 20
-                        }),
-                        geoBufferAnalystParam = new SuperMap.REST.GeometryBufferAnalystParameters({
-                            sourceGeometry: region,
-                            bufferSetting: bufferSetting
-                        });
-
-                bufferServiceByGeometry.events.on({"processCompleted": bufferAnalystCompleted});
-                bufferServiceByGeometry.processAsync(geoBufferAnalystParam);
-				
-				// thisObj.pointBufferFlag = false;
-			}
 			
 			var camera = viewer.scene.camera;
 			camera.setView({
@@ -938,6 +850,9 @@
 				$('#streetViewContainer'),		// Whether to make this a class (contain other functionality?)
 				new PanoView('panoContainer')		// Not implemented
 			);
+			
+			threeDGIS.threeDView.updateCameraInfo();
+			$('#txtSystemInfo').val('3D GIS Scene initialized');
 			
 			// Use a polygon to perform buffer
 			handlerPolygon.drawEvt.addEventListener(threeDGIS.threeDView.computeBuffer);
@@ -1014,7 +929,7 @@
 						layerBldgVec.refresh();
 						layerPodiumVec.refresh();
 						
-						/*layerBldgVec.setQueryParameter({
+						layerBldgVec.setQueryParameter({
 							url: host+'/iserver/services/data-Phase2_Data/rest/data',
 							dataSourceName: '10.40.106.82_P2_Sample_Data',
 							dataSetName: 'Bldg_HK80',
@@ -1033,7 +948,7 @@
 							dataSourceName: '10.40.106.82_P2_Sample_Data',
 							dataSetName: 'AAM_Model',
 							keyWord: 'SmID'
-						});*/
+						});
 					},function(e){
 						if (widget._showRenderLoopErrors) {
 							var title = '??SCP??,???????????url???????';
@@ -2287,45 +2202,6 @@
 			viewer.entities.removeById('locationResult');
 			threeDGIS.threeDView.removeAllLabels();
 			
-			/*fields = [];
-			var attributeValue = $('#queryValue').val();
-			
-			var searchCriteria = $('#selSearchCriteria option:selected').val();
-			var layerToSearch, db, selectColumn;
-			if(searchCriteria=='bldgName')
-			{
-				layerToSearch = 'bldg';
-				db = '10.40.106.82_P2_Sample_Data';
-				selectColumn = 'NAME_ENG';
-			}
-			else
-			{
-				layerToSearch = 'APPLICATION_WGS84';
-				db = '10.40.106.82_R3DGIS_GISDB';
-				selectColumn = 'APP_CASE_NO';
-			}
-			
-			var getFeatureParam, getFeatureBySQLService, getFeatureBySQLParams;
-			//alert("APP_CASE_NO LIKE '"+attributeValue+"%' OR LOCAT_ADDR LIKE '%"+attributeValue+"%'");
-
-			getFeatureParam = new SuperMap.REST.FilterParameter({
-				name: layerToSearch+'@'+db,
-				//attributeFilter: "APP_CASE_NO='"+attributeValue+"'"
-				attributeFilter: selectColumn+" LIKE '%"+attributeValue+"%'",
-				orderBy: selectColumn
-			});
-			
-			getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
-				queryParameter: getFeatureParam,
-				datasetNames:[db+":"+layerToSearch],		// Hardcode
-				toIndex: 999999
-			});
-			getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(dataUrl, {
-				eventListeners: {"processCompleted": featureQueryCompleted, "processFailed": processFailed}
-			});
-
-			getFeatureBySQLService.processAsync(getFeatureBySQLParams);*/
-			
 			// Debug
 			var dObject = {
 				json: '{"name":"'+$('#queryValue').val()+'"}'
@@ -2440,95 +2316,6 @@
 						$('#attributeTable').on('dbl-click-cell.bs.table',function(e, field, value, row) {
 							if(threeDGIS.threeDView.viewMode!='Bird-eye')
 								return;		// Don't fly under human view mode
-
-							/*function flyToCase(getFeaturesEventArgs)
-							{						
-								var features = getFeaturesEventArgs.result.features;
-								var geometry = features[0].geometry;
-								var vertices = geometry.getVertices();
-								var viewer = threeDGIS.threeDView.viewer;
-								
-								if(viewer.entities.getById('APP_HIGHLIGHT')!=undefined)
-								{
-									viewer.entities.removeById('APP_HIGHLIGHT');
-									threeDGIS.threeDView.removeAllLabels();
-								}
-								
-								var cesiumVertices = [];
-								var cartos = []
-								for(var i=0; i<vertices.length; i++)
-								{
-									var lng = vertices[i].x;
-									var lat = vertices[i].y;
-									var carto = new Cesium.Cartographic(lng*Math.PI/180, lat*Math.PI/180);
-									cartos.push(carto);
-									var h = viewer.scene.globe.getHeight(carto);
-									cesiumVertices.push(Cesium.Cartesian3.fromDegrees(lng, lat, h));
-								}
-								Cesium.sampleTerrain(viewer.terrainProvider, 17, cartos)
-									.then(function(samples) {
-										var baseHeight = 999;
-										var maxHeight = -99;
-										
-										for(var i=0; i<samples.length; i++)
-										{									
-											if(samples[i].height<baseHeight)
-												baseHeight = samples[i].height;
-											if(samples[i].height>maxHeight)
-												maxHeight = samples[i].height;
-										}
-										
-										var polygon = new Cesium.PolygonGraphics({
-											hierarchy: new Cesium.PolygonHierarchy(cesiumVertices),
-											extrudedHeight: maxHeight+10,
-											height: baseHeight,
-											material: new Cesium.Color(1.0, 0.2, 0.6, 0.7),
-											outline: true,
-											outlineColor : Cesium.Color.BLACK,
-											outlineWidth : 10	// Does not seem to make any difference
-										});
-										
-										viewer.entities.add({
-											id: 'APP_HIGHLIGHT',
-											polygon: polygon,
-											outline: true,
-											shadows: Cesium.ShadowMode.ENABLED		// Does not seem to be working
-										});
-									});
-								
-								var coordinate = row.Coordinate;
-								var coordTemp = coordinate.substring(1,coordinate.length-1);
-								var lnglat = coordTemp.split(', ');
-								threeDGIS.threeDView.addLabel(row.APP_CASE_NO,Number(lnglat[0]),Number(lnglat[1]));
-							}
-							
-							var layerToSearch = 'APPLICATION_WGS84';
-							var db = '10.40.106.82_R3DGIS_GISDB';
-							var selectColumn = 'APP_CASE_NO';
-							
-							getFeatureParam = new SuperMap.REST.FilterParameter({
-								name: layerToSearch+'@'+db,
-								//attributeFilter: "APP_CASE_NO='"+attributeValue+"'"
-								attributeFilter: selectColumn + " = '" + row.APP_CASE_NO + "'",
-								orderBy: selectColumn
-							});
-							
-							getFeatureBySQLParams = new SuperMap.REST.GetFeaturesBySQLParameters({
-								queryParameter: getFeatureParam,
-								datasetNames:[db+":"+layerToSearch]
-							});
-							getFeatureBySQLService = new SuperMap.REST.GetFeaturesBySQLService(dataUrl, {
-								eventListeners: {"processCompleted": flyToCase, "processFailed": processFailed}
-							});
-
-							getFeatureBySQLService.processAsync(getFeatureBySQLParams);
-							*/
-							
-							/*if(viewer.entities.getById('locationResult')!=undefined)
-							{
-								viewer.entities.removeById('locationResult');
-								threeDGIS.threeDView.removeAllLabels();
-							}*/
 							
 							var viewer = threeDGIS.threeDView.viewer;
 							for(var i=0; i<viewer.entities.values.length; i++)
@@ -2545,16 +2332,6 @@
 							
 							var carto = new Cesium.Cartographic(Number(wgspt[0])*Math.PI/180,Number(wgspt[1])*Math.PI/180);
 							carto.height = threeDGIS.threeDView.viewer.scene.globe.getHeight(carto);
-							
-							/*threeDGIS.threeDView.viewer.scene.camera.flyTo({
-								destination: Cesium.Cartesian3.fromDegrees(Number(wgspt[0]),Number(wgspt[1]),carto.height+400),
-								orientation: {
-									heading: 0,
-									pitch: -Math.PI/2,
-									roll: 0
-								},
-								duration: 2
-							});*/
 							
 							threeDGIS.threeDView.addLabel(row.Name,Number(wgspt[0]),Number(wgspt[1]));
 
@@ -2578,7 +2355,7 @@
 							
 							function flyToCase(e) {
 								console.log(e.result);	// Why this implements for many times?
-								var feature = e.result.features[0];
+								var feature = e.result.features[0];		// The attributes of the selected features are here.
 								var geometry = feature.geometry;
 								
 								if(geometry==null)		// Feature geometry not interpreted. May be this is a 3D format not yet readable
@@ -2609,10 +2386,7 @@
 								else
 								{
 									if(geometry instanceof SuperMap.Geometry.Point)
-									{
-										console.log('point');
-										console.log(geometry);
-										
+									{									
 										var pt = geometry.getVertices()[0];
 										var x = pt.x;
 										var y = pt.y;
@@ -2639,9 +2413,6 @@
 									}
 									else if(geometry instanceof SuperMap.Geometry.Polygon || geometry instanceof SuperMap.Geometry.MultiPolygon)
 									{
-										console.log('polygon');
-										console.log(geometry);
-										
 										// Change to: 
 										// geometry.components[i].getVertices()
 										// to support multipolygon
@@ -2704,9 +2475,6 @@
 									}
 									else if(geometry instanceof SuperMap.Geometry.LineString || geometry instanceof SuperMap.Geometry.MultiLineString)	// Polyline
 									{
-										console.log('polyline');
-										console.log(geometry);
-										
 										var bufferAnalystCompleted = function(args) {
 											if(args){
 												var bufferResultGeometry = args.result.resultGeometry;
@@ -3105,7 +2873,10 @@
 	<!-- Photo montage -->
 	<script>
 		$('#iconPhotoMontage').click(function() {
-			$('#imgMontageFile').click();
+			$('#montageModal').modal({
+				backdrop: 'static',
+				keyboard: false
+			});
 			
 			// The following shows the photo. To be implemented after upload
 			// $('#panoContainer').css('display','block');
@@ -3152,22 +2923,32 @@
 						
 						Cesium.sampleTerrain(threeDGIS.threeDView.viewer.terrainProvider, 17, [carto])
 							.then(function(samples) {
-								if(h!=undefined) {
-									h = h.valueOf();
-								}
-								else
-								{
-									if(make.toLowerCase().indexOf("dji")==-1)	// Not DJI image, supposed to be on the ground?
-										h = samples[0].height+2;
-									else	// DJI image, supposed to be with height of 100m?
-										h = samples[0].height+100;
-								}
-								
 								var orientation = {
 									heading: 0,
 									pitch: 0,
 									roll: 0
 								}
+								
+								if(h!=undefined) {
+									h = h.valueOf();
+								}
+								else
+								{
+									if(make!=undefined)
+									{
+										if(make.toLowerCase().indexOf("dji")==-1)	// Not DJI image, supposed to be on the ground?
+											h = samples[0].height+2;
+										else	// DJI image, supposed to be with height of 100m?
+										{
+											h = samples[0].height+100;
+											orientation.pitch = -Math.PI/2;
+										}
+									}
+									else
+										h = samples[0].height+2;
+								}
+								
+								
 								if(heading!=undefined) {
 									orientation.heading = heading.valueOf()*Math.PI/180;
 									
@@ -3175,10 +2956,9 @@
 										console.warn('The image direction value captured is referred to \'Magnetic North\', which differs from the \'True North\'');
 								}
 								
-								if(make.toLowerCase().indexOf("dji")!=-1)	// If is DJI image, look downwards
-									orientation.pitch = -Math.PI/2;
-								
-								cesiumCamera.frustum.fov = 2*Math.atan(17.5/focalLength);
+								if($.isNumeric(focalLength))
+									cesiumCamera.frustum.fov = 2*Math.atan(17.5/focalLength);
+									
 								cesiumCamera.flyTo({
 									destination: Cesium.Cartesian3.fromDegrees(carto.longitude*180/Math.PI, carto.latitude*180/Math.PI, h),
 									orientation: orientation,
@@ -3190,12 +2970,12 @@
 									$('#panoContainer').css('opacity','1');
 									$('#exMontageTransp').bootstrapSlider("setValue",100);
 									
-									$('#montageModal').modal({
-										backdrop: 'static',
-										keyboard: false
-									});
+									threeDGIS.threeDView.startMontageMoveMode();
 								},3000);
 								
+								$('#montageScaleBar').css('display','block');
+								
+								// Any more to do to gc this?
 								img1.src='';
 								img1=undefined;
 							});
@@ -3230,8 +3010,6 @@
 					console.log('ERRORS: ' + err +  ' '  +status);
 				}
 			});*/
-			
-			
 		});
 		
 		var transpSlider = $('#exMontageTransp').bootstrapSlider({
@@ -3244,9 +3022,28 @@
 			$('#panoContainer').css('opacity',val.newValue/100);
 		});
 		
+		$('#selectMontageMoveMode').on('mouseup', function(){
+			var open = $('#selectMontageMoveMode').data("isopen");
+			if(open)
+			{
+				var id = $('#selectMontageMoveMode option:selected').val();
+				
+				if(id==1)
+					threeDGIS.threeDView.startMontageMoveMode();
+				else
+				{
+					threeDGIS.threeDView.stopMontageMoveMode();
+				}
+			}
+			$('#selectMontageMoveMode').data("isopen", !open);
+		});
+		
 		$('#btnQuitMontage').click(function() {
 			$('#panoContainer').css('display','none');
 			$('#imgMontageFile').val('');
+			threeDGIS.threeDView.stopMontageMoveMode();
+			$('#montageScaleBar').css('display','none');
+			$('#montageModal').modal('hide');
 		});
 	</script>
 	

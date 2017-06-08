@@ -9,7 +9,8 @@ function MovementCtrl(viewer)	// Cesium.viewer
 		moveUp : false,
 		moveDown : false,
 		moveLeft : false,
-		moveRight : false
+		moveRight : false,
+		speedUp : false
 	};
 	var _moveRate = 1;		// How fast is camera moving with key control
 	
@@ -29,6 +30,7 @@ function MovementCtrl(viewer)	// Cesium.viewer
 	this.humanFlag = true;		// Whether it is human mode. If not, then it is bird eye mode
 								// First set this to true and then toggle it in initiation construction,
 								//		so default mode is bird eye mode
+	this.montageFlag = false;
 	
 	/* 
 	 * Private functions
@@ -48,6 +50,8 @@ function MovementCtrl(viewer)	// Cesium.viewer
 				return 'moveRight';
 			case 'A'.charCodeAt(0):
 				return 'moveLeft';
+			case 16:
+				return 'speedUp';
 			default:
 				return undefined;
 		}
@@ -58,6 +62,16 @@ function MovementCtrl(viewer)	// Cesium.viewer
 	{
 		var min = 3*Math.PI/180, max = 111*Math.PI/180;
 		newFOV = _viewer.camera.frustum.fov - delta*0.05*Math.PI/180;
+		
+		if(newFOV >= min && newFOV <= max)
+			_viewer.camera.frustum.fov = newFOV;
+	}
+	
+	// Change FOV with more scale and may be more precise?
+	var _funcChangeFOVinMontage = function(delta)
+	{
+		var min = 3*Math.PI/180, max = 135*Math.PI/180;
+		newFOV = _viewer.camera.frustum.fov - delta*0.01*Math.PI/180;
 		
 		if(newFOV >= min && newFOV <= max)
 			_viewer.camera.frustum.fov = newFOV;
@@ -92,24 +106,32 @@ function MovementCtrl(viewer)	// Cesium.viewer
 		if($.isNumeric(cameraHeight))
 			_moveRate = 0.1*Math.sqrt(cameraHeight) + 1;
 		
-		
+		if(_flags.speedUp) {
+			_moveRate = 5*_moveRate;
+		}
 		if (_flags.moveForward) {
 			camera.moveForward(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 		if (_flags.moveBackward) {
 			camera.moveBackward(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 		if (_flags.moveUp) {
 			camera.moveUp(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 		if (_flags.moveDown) {
 			camera.moveDown(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 		if (_flags.moveLeft) {
 			camera.moveLeft(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 		if (_flags.moveRight) {
 			camera.moveRight(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 	}
 	
@@ -124,47 +146,234 @@ function MovementCtrl(viewer)	// Cesium.viewer
 		_viewer.scene.camera.position = Cesium.Cartesian3.fromDegrees(cameraCarto.longitude*180/Math.PI, cameraCarto.latitude*180/Math.PI, cameraCarto.height);
 		var moveRateHuman = 1;
 		
+		if(_flags.speedUp) {
+			moveRateHuman = 3*moveRateHuman;
+		}
 		if (_flags.moveForward) {
 			camera.moveForward(moveRateHuman);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 		if (_flags.moveBackward) {
 			camera.moveBackward(moveRateHuman);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 		if (_flags.moveLeft) {
 			camera.moveLeft(moveRateHuman);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 		if (_flags.moveRight) {
 			camera.moveRight(moveRateHuman);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 		if (_flags.moveUp) {
 			camera.setView({
 				orientation: {
-					heading: camera.heading - moveRateHuman/20,
+					heading: camera.heading - 1/30,
 					pitch: camera.pitch,
 					roll: 0
 				}
 			});
+			threeDGIS.threeDView.updateCameraInfo();
 			// lookLeft(moveRateHuman/20);
 		}
 		if (_flags.moveDown) {
 			camera.setView({
 				orientation: {
-					heading: camera.heading + moveRateHuman/20,
+					heading: camera.heading + 1/30,
 					pitch: camera.pitch,
 					roll: 0
 				}
 			});
+			threeDGIS.threeDView.updateCameraInfo();
+		}
+	};
+	
+	// Proposed Cesium onTick for montage view
+	var _funcMontageTick = function() {
+		var camera = _viewer.camera;
+
+		// Change movement spered based on the distance of the camera to the surface of the ellipsoid.
+		var cameraCarto = _ellipsoid.cartesianToCartographic(camera.position);		
+		var cameraHeight = cameraCarto.height;
+		if(cameraHeight<0)
+			cameraHeight=0;
+			
+		if($.isNumeric(cameraHeight))
+			_moveRate = 0.1*Math.sqrt(cameraHeight) + 1;
+			
+		if(_flags.speedUp) {
+			_moveRate = 5*_moveRate;
+		}
+		if (_flags.moveForward) {
+			camera.moveForward(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
+		}
+		if (_flags.moveBackward) {
+			camera.moveBackward(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
+		}
+		if (_flags.moveUp) {
+			camera.moveUp(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
+		}
+		if (_flags.moveDown) {
+			camera.moveDown(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
+		}
+		if (_flags.moveLeft) {
+			camera.moveLeft(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
+		}
+		if (_flags.moveRight) {
+			camera.moveRight(_moveRate);
+			threeDGIS.threeDView.updateCameraInfo();
 		}
 	};
 	
 	/*
 	 * Public functions
 	 */
+	// Toggle between bird-eye and human view
 	MovementCtrl.prototype.toggle = function() {
 		// if currently bird eye mode, to switch to human mode
 		if(!this.humanFlag)
 		{
-			this.humanFlag = true;
+			$('#txtSystemInfo').val('Click a point as destination of walk mode');
+			
+			var thisObj = this;
+			var prevPosition = _prevPosition;
+			function flyToHuman(cPos){
+				thisObj.humanFlag = true;
+				// var cPos = _viewer.scene.camera.position;
+				
+				var cPosCarto = Cesium.Cartographic.fromCartesian(cPos);
+				cPosCarto.height = 1.8+Cesium.defaultValue(viewer.scene.globe.getHeight(new Cesium.Cartographic(cPosCarto.longitude, cPosCarto.latitude)), 0.0);
+				
+				_viewer.scene.camera.flyTo({
+					destination: Cesium.Cartesian3.fromDegrees(cPosCarto.longitude*180/Math.PI, cPosCarto.latitude*180/Math.PI, cPosCarto.height),
+					orientation: {
+						heading : _viewer.scene.camera.heading, // east, default value is 0.0 (north)
+						pitch : -5*Math.PI/180,    // default value (looking down)
+						roll : 0.0                             // default value
+					},
+					duration: 2
+				});
+				
+				setTimeout(function() {
+					_canvas.setAttribute('tabindex', '0'); // needed to put focus on the canvas
+					_canvas.onclick = function() {
+						_canvas.focus();
+					};
+					
+					_viewer.scene.screenSpaceCameraController.enableRotate = false;
+					_viewer.scene.screenSpaceCameraController.enableTranslate = false;
+					_viewer.scene.screenSpaceCameraController.enableZoom = false;
+					_viewer.scene.screenSpaceCameraController.enableTilt = false;
+					_viewer.scene.screenSpaceCameraController.enableLook = false;
+					_handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOWN);
+					
+					var startMousePosition;
+					var mousePosition;
+
+					_handler.setInputAction(function(movement) {
+						_flags.looking = true;
+						mousePosition = startMousePosition = Cesium.Cartesian3.clone(movement.position);
+						
+						mouseStartX = mousePosition.x;
+						mouseStartY = mousePosition.y;
+						
+						_heading = _viewer.scene.camera.heading;
+						_pitch = _viewer.scene.camera.pitch;
+					}, Cesium.ScreenSpaceEventType.LEFT_DOWN);
+
+					_handler.setInputAction(function(movement) {
+						mousePosition = movement.endPosition;
+						if(_flags.looking)
+						{
+							var width = _canvas.clientWidth;
+							var height = _canvas.clientHeight;
+
+							var x = -(mousePosition.x - startMousePosition.x)*0.12 + _heading*180/Math.PI;
+							var y = (mousePosition.y - startMousePosition.y)*0.12 + _pitch*180/Math.PI;
+							var cp = _viewer.camera.position;
+							
+							y = Math.max( - 89, Math.min( 89, y ) );
+							
+							viewer.camera.setView({
+								destination: cp,
+								orientation: {
+									heading : Cesium.Math.toRadians(x), // east, default value is 0.0 (north)
+									pitch : Cesium.Math.toRadians(y),    // default value (looking down)
+									roll : 0.0                             // default value
+								}
+							});
+						}
+					}, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+					
+					_handler.setInputAction(function(movement) {
+						var min = 5*Math.PI/180, max = 111*Math.PI/180;	
+						_funcChangeFOV(movement);
+						threeDGIS.threeDView.updateCameraInfo();
+					}, Cesium.ScreenSpaceEventType.WHEEL);
+
+					_handler.setInputAction(function(position) {
+						_flags.looking = false;
+						
+						_heading = _viewer.scene.camera.heading;
+						_pitch = _viewer.scene.camera.pitch;
+					}, Cesium.ScreenSpaceEventType.LEFT_UP);
+					
+					_viewer.clock.onTick.removeEventListener(_funcBirdEyeTick);
+					_viewer.clock.onTick.addEventListener(_funcHumanTick);
+				},2000);
+			}
+			
+			function clickPickPosition(movement) {
+				var cPos = _viewer.camera.position;
+				_prevPosition.destination = new Cesium.Cartesian3(cPos.x, cPos.y, cPos.z);
+				_prevPosition.orientation.heading = _viewer.scene.camera.heading;
+				_prevPosition.orientation.pitch = _viewer.scene.camera.pitch;
+				_prevPosition.orientation.roll = 0;
+				
+				var cartesian = threeDGIS.threeDView.viewer.scene.pickPosition(movement.position);
+				_handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
+				flyToHuman(cartesian);
+				$('#txtSystemInfo').val('Switched to walk mode');
+			}
+			
+			// Click on a point to start walk mode
+			_handler.setInputAction(clickPickPosition, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+		}
+		else	// if currently human mode, to switch to bird eye mode
+		{
+			this.humanFlag = false;
+				
+			_viewer.scene.screenSpaceCameraController.enableRotate = true;
+			_viewer.scene.screenSpaceCameraController.enableTranslate = true;
+			_viewer.scene.screenSpaceCameraController.enableZoom = true;
+			_viewer.scene.screenSpaceCameraController.enableTilt = true;
+			_viewer.scene.screenSpaceCameraController.enableLook = true;
+			
+			_handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOWN);
+			_handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_UP);
+			_handler.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+			_handler.removeInputAction(Cesium.ScreenSpaceEventType.WHEEL);
+			
+			_viewer.clock.onTick.removeEventListener(_funcHumanTick);
+			_viewer.clock.onTick.addEventListener(_funcBirdEyeTick);
+			
+			if(_prevPosition.destination)
+				_viewer.scene.camera.flyTo(_prevPosition);
+				
+			$('#txtSystemInfo').val('Switched to bird-eye mode');
+		}
+	}
+	
+	MovementCtrl.prototype.toggleMontage = function() {
+		// if currently bird eye mode, to switch to human mode
+		if(!this.montageFlag)
+		{
+			this.montageFlag = true;
 			var cPos = _viewer.scene.camera.position;
 			_prevPosition.destination = new Cesium.Cartesian3(cPos.x, cPos.y, cPos.z);
 			_prevPosition.orientation.heading = _viewer.scene.camera.heading;
@@ -172,17 +381,6 @@ function MovementCtrl(viewer)	// Cesium.viewer
 			_prevPosition.orientation.roll = 0;
 			
 			var cPosCarto = Cesium.Cartographic.fromCartesian(cPos);
-			cPosCarto.height = 1.8+Cesium.defaultValue(viewer.scene.globe.getHeight(new Cesium.Cartographic(cPosCarto.longitude, cPosCarto.latitude)), 0.0);
-			
-			_viewer.scene.camera.flyTo({
-				destination: Cesium.Cartesian3.fromDegrees(cPosCarto.longitude*180/Math.PI, cPosCarto.latitude*180/Math.PI, cPosCarto.height),
-				orientation: {
-					heading : _viewer.scene.camera.heading, // east, default value is 0.0 (north)
-					pitch : -5*Math.PI/180,    // default value (looking down)
-					roll : 0.0                             // default value
-				},
-				duration: 2
-			});
 			
 			setTimeout(function() {
 				_canvas.setAttribute('tabindex', '0'); // needed to put focus on the canvas
@@ -236,8 +434,9 @@ function MovementCtrl(viewer)	// Cesium.viewer
 				}, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 				
 				_handler.setInputAction(function(movement) {
-					var min = 5*Math.PI/180, max = 111*Math.PI/180;	
-					_funcChangeFOV(movement);
+					var min = 5*Math.PI/180, max = 135*Math.PI/180;	
+					_funcChangeFOVinMontage(movement);
+					threeDGIS.threeDView.updateCameraInfo();
 				}, Cesium.ScreenSpaceEventType.WHEEL);
 
 				_handler.setInputAction(function(position) {
@@ -248,12 +447,12 @@ function MovementCtrl(viewer)	// Cesium.viewer
 				}, Cesium.ScreenSpaceEventType.LEFT_UP);
 				
 				_viewer.clock.onTick.removeEventListener(_funcBirdEyeTick);
-				_viewer.clock.onTick.addEventListener(_funcHumanTick);
+				_viewer.clock.onTick.addEventListener(_funcMontageTick);
 			},2000);
 		}
 		else	// if currently human mode, to switch to bird eye mode
 		{
-			this.humanFlag = false;
+			this.montageFlag = false;
 				
 			_viewer.scene.screenSpaceCameraController.enableRotate = true;
 			_viewer.scene.screenSpaceCameraController.enableTranslate = true;
@@ -266,11 +465,8 @@ function MovementCtrl(viewer)	// Cesium.viewer
 			_handler.removeInputAction(Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 			_handler.removeInputAction(Cesium.ScreenSpaceEventType.WHEEL);
 			
-			_viewer.clock.onTick.removeEventListener(_funcHumanTick);
+			_viewer.clock.onTick.removeEventListener(_funcMontageTick);
 			_viewer.clock.onTick.addEventListener(_funcBirdEyeTick);
-			
-			if(_prevPosition.destination)
-				_viewer.scene.camera.flyTo(_prevPosition);
 		}
 	}
 	

@@ -23,7 +23,6 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	var _drawPolylineHandler = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Line);
 	var _drawPolygonHandler = new Cesium.DrawHandler(viewer,Cesium.DrawMode.Polygon);
 	
-	
 	// Viewshed position
 	this.viewPosition;
 	
@@ -49,6 +48,10 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 	this.bufferFlag = false;
 	this.analysisFlag = false;		// Detect whether whatever 3D analysis is going on. May consider to split this into different items
 	this.identifyingFlag = false;
+	// Record whether user is holding mouse buttons, left/medium/right
+	this.leftClickFlag = false;		
+	this.middleClickFlag = false;
+	this.rightClickFlag = false;
 	
 	this.selectedFeature;
 	
@@ -60,7 +63,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		_handlerDis.deactivate();
 		_handlerHeight.deactivate();
 	}
-	
+
 	/*
 	 * Public functions
 	 */
@@ -72,6 +75,45 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 			this.viewMode = 'Human-eye';
 		else
 			this.viewMode = 'Bird-eye';
+	}
+	
+	// Update camera information on the infoboxes
+	ThreeDView.prototype.updateCameraInfo = function() {
+		if(threeDGIS.mode[0]=='3D')
+		{
+			var camera = threeDGIS.threeDView.viewer.camera;
+			var carto = Cesium.Cartographic.fromCartesian(camera.position);
+			var lng = carto.longitude*180/Math.PI;
+			var lat = carto.latitude*180/Math.PI;
+			
+			var hkpt = CoordTransform.wgs2hk(lng, lat);
+			var height = carto.height;
+			
+			var heading = camera.heading;
+			var pitch = camera.pitch;
+			var fov = camera.frustum.fov;
+			
+			$('#txtLocation').val('Camera (x:'+hkpt[0].toFixed(3)+', y:'+hkpt[1].toFixed(3)+', z:'+height.toFixed(3)+')');
+			$('#txtScaleElev').val('Heading:'+(heading*180/Math.PI).toFixed(1)+', Pitch:'+(-pitch*180/Math.PI).toFixed(1)+', FOV: '+(fov*180/Math.PI).toFixed(1));
+		}
+	}
+	
+	// Start photo-montage mode
+	ThreeDView.prototype.startMontageMoveMode = function() {
+		if(this.viewMode=='Bird-eye' || this.viewMode=='Human-eye')
+		{
+			this.viewMode = 'Photo-montagte';
+			_movementCtrl.toggleMontage();
+		}
+	}
+	
+	// Start photo-montage mode
+	ThreeDView.prototype.stopMontageMoveMode = function() {
+		if(this.viewMode=='Photo-montagte')
+		{
+			this.viewMode = 'Bird-eye';
+			_movementCtrl.toggleMontage();
+		}
 	}
 	
 	// Start distance measure
@@ -102,6 +144,7 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 		_drawPolygonHandler.clear();
 		
 		this.analysis3D.sightLine.clear();
+		this.analysis3D.profile.clear();
 	}
 	
 	// Add label manually into 3D
@@ -658,14 +701,68 @@ function ThreeDView(viewer, mapDiv, toolDiv)
 				
 			// Show distance from camera to picked position in infobox
 			var cp = threeDGIS.threeDView.viewer.camera.position;
-			if(cp==undefined)
+			if(cartesianPosition==undefined)
 				threeDGIS.writeInfo('Click position not identifiable');
 			else
 			{
 				var camClickDistance = Cesium.Cartesian3.distance(cartesianPosition, cp);
-				threeDGIS.writeInfo('Camera to picked point distance: '+camClickDistance.toFixed(3)+'m');
+				var cartoClick = Cesium.Cartographic.fromCartesian(cartesianPosition);
+				var lng = cartoClick.longitude*180/Math.PI;
+				var lat = cartoClick.latitude*180/Math.PI;
+				var hkpt = CoordTransform.wgs2hk(lng, lat);
+				var height = cartoClick.height;
+				
+				threeDGIS.writeInfo('Click info: ('+hkpt[0].toFixed(3)+', '+hkpt[1].toFixed(3)+', '+height.toFixed(3)+'), dist.: '+camClickDistance.toFixed(3)+'m');
 			}
 		},Cesium.ScreenSpaceEventType.LEFT_CLICK);
+		
+		_handler.setInputAction(function(e){
+			threeDGIS.threeDView.leftClickFlag = true;
+		},Cesium.ScreenSpaceEventType.LEFT_DOWN);
+		
+		_handler.setInputAction(function(e){
+			threeDGIS.threeDView.leftClickFlag = false;
+		},Cesium.ScreenSpaceEventType.LEFT_UP);
+		
+		_handler.setInputAction(function(e){
+			threeDGIS.threeDView.middleClickFlag = true;
+		},Cesium.ScreenSpaceEventType.MIDDLE_DOWN);
+		
+		_handler.setInputAction(function(e){
+			threeDGIS.threeDView.middleClickFlag = false;
+		},Cesium.ScreenSpaceEventType.MIDDLE_UP);
+		
+		_handler.setInputAction(function(e){
+			threeDGIS.threeDView.rightClickFlag = true;
+		},Cesium.ScreenSpaceEventType.RIGHT_DOWN);
+		
+		_handler.setInputAction(function(e){
+			threeDGIS.threeDView.rightClickFlag = false;
+		},Cesium.ScreenSpaceEventType.RIGHT_UP);
+		
+		_handler.setInputAction(function(e){
+			if(threeDGIS.threeDView.viewMode=='Bird-eye')
+			{
+				if(threeDGIS.threeDView.leftClickFlag || threeDGIS.threeDView.middleClickFlag)
+					threeDGIS.threeDView.updateCameraInfo();
+			}
+			else
+			{
+				if(threeDGIS.threeDView.leftClickFlag)
+					threeDGIS.threeDView.updateCameraInfo();
+			}
+		},Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+		
+		_handler.setInputAction(function(e){
+			if(threeDGIS.threeDView.viewMode=='Bird-eye')
+				threeDGIS.threeDView.updateCameraInfo();		// May have another function only changing fov
+		},Cesium.ScreenSpaceEventType.WHEEL );
+		
+		// Continuously detecting camera position, but better find out in what cases the camera must be idle so this may not be running forever
+		this.viewer.clock.onTick.addEventListener(function() {
+			if(threeDGIS.threeDView.rightClickFlag && threeDGIS.threeDView.viewMode=='Bird-eye')
+				threeDGIS.threeDView.updateCameraInfo();
+		});
 	}
 	
 	// Click to delete a 3D block during editing mode
